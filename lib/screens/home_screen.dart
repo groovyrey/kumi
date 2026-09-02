@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../theme/app_theme.dart';
 import '../widgets/kumi_mark.dart';
@@ -23,8 +22,8 @@ class HomeScreen extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      PhosphorIcon(
-                        PhosphorIcons.flower(),
+                      Icon(
+                        Icons.local_florist,
                         size: 22,
                         color: colors.primary,
                       ),
@@ -93,17 +92,17 @@ class HomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               _FeatureTile(
-                icon: PhosphorIcons.compass(),
+                icon: Icons.design_services,
                 title: 'Design a screen',
                 subtitle: 'Your screens live in lib/screens.',
               ),
               _FeatureTile(
-                icon: PhosphorIcons.paintBrush(),
+                icon: Icons.palette,
                 title: 'Tune the theme',
                 subtitle: 'Palette and type live in lib/theme.',
               ),
               _FeatureTile(
-                icon: PhosphorIcons.rocketLaunch(),
+                icon: Icons.rocket_launch,
                 title: 'Ship an APK',
                 subtitle: 'Push a v* tag and Actions attaches the release.',
               ),

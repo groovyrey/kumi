@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../theme/app_theme.dart';
 
@@ -34,12 +33,12 @@ class KumiMark extends StatelessWidget {
         ],
       ),
 child: Center(
-          child: PhosphorIcon(
-            PhosphorIcons.flower(),
-            size: size * 0.52,
-            color: AppColors.gradientAccent,
-          ),
+        child: Icon(
+          Icons.local_florist,
+          size: size * 0.5,
+          color: AppColors.gradientAccent,
         ),
+      ),
     );
   }
 }
