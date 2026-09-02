@@ -24,7 +24,7 @@ class HomeScreen extends StatelessWidget {
                   Row(
                     children: [
                       PhosphorIcon(
-                        PhosphorIcons.flower,
+                        PhosphorIcons.flower(),
                         size: 22,
                         color: colors.primary,
                       ),
@@ -92,18 +92,18 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
-              const _FeatureTile(
-                icon: PhosphorIcons.compass,
+              _FeatureTile(
+                icon: PhosphorIcons.compass(),
                 title: 'Design a screen',
                 subtitle: 'Your screens live in lib/screens.',
               ),
-              const _FeatureTile(
-                icon: PhosphorIcons.paintBrush,
+              _FeatureTile(
+                icon: PhosphorIcons.paintBrush(),
                 title: 'Tune the theme',
                 subtitle: 'Palette and type live in lib/theme.',
               ),
-              const _FeatureTile(
-                icon: PhosphorIcons.rocketLaunch,
+              _FeatureTile(
+                icon: PhosphorIcons.rocketLaunch(),
                 title: 'Ship an APK',
                 subtitle: 'Push a v* tag and Actions attaches the release.',
               ),

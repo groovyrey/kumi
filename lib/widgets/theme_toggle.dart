@@ -11,9 +11,9 @@ class ThemeToggle extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     final (icon, label) = switch (state.themeMode) {
-      ThemeMode.light => (PhosphorIcons.sun, 'Light'),
-      ThemeMode.dark => (PhosphorIcons.moon, 'Dark'),
-      ThemeMode.system => (PhosphorIcons.sunDim, 'System'),
+      ThemeMode.light => (PhosphorIcons.sun(), 'Light'),
+      ThemeMode.dark => (PhosphorIcons.moon(), 'Dark'),
+      ThemeMode.system => (PhosphorIcons.sunDim(), 'System'),
     };
 
     return Tooltip(

@@ -33,13 +33,13 @@ class KumiMark extends StatelessWidget {
           ),
         ],
       ),
-      child: Center(
-        child: PhosphorIcon(
-          PhosphorIcons.flower,
-          size: size * 0.52,
-          color: AppColors.gradientAccent,
+child: Center(
+          child: PhosphorIcon(
+            PhosphorIcons.flower(),
+            size: size * 0.52,
+            color: AppColors.gradientAccent,
+          ),
         ),
-      ),
     );
   }
 }
