@@ -161,6 +161,7 @@ extension AppThemeX on BuildContext {
   Color get appSurface => AppColors.surface;
   Color get appBackground => AppColors.background;
   Color get appOnSurface => AppColors.onSurface;
+  Color get appOnSurfaceVariant => AppColors.onSurfaceVariant;
   Color get appAccent => AppColors.accent;
   Color get appAccentSoft => AppColors.accentSoft;
   TextTheme get appTextTheme => Theme.of(this).textTheme;
