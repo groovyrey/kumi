@@ -105,13 +105,13 @@ internal class AdBlockWebView(
             return null
         }
 
-        override fun onPageStarted(view: WebView?, url: String?) {
-            super.onPageStarted(view, url)
+        override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+            super.onPageStarted(view, url, favicon)
             channel.invokeMethod("onPageStarted", url)
         }
 
-        override fun onPageFinished(view: WebView?, url: String?) {
-            super.onPageFinished(view, url)
+        override fun onPageFinished(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+            super.onPageFinished(view, url, favicon)
             channel.invokeMethod("onPageFinished", url)
         }
 
