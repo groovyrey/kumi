@@ -1,14 +1,34 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../config.dart';
 import '../models/media_item.dart';
 import '../theme/app_theme.dart';
+import 'player_screen.dart';
 
-class DetailScreen extends StatelessWidget {
+class DetailScreen extends StatefulWidget {
   const DetailScreen({super.key, required this.item});
 
   final MediaItem item;
+
+  @override
+  State<DetailScreen> createState() => _DetailScreenState();
+}
+
+class _DetailScreenState extends State<DetailScreen> {
+  late final String _mediaParam;
+  late int _activeIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _mediaParam = widget.item.mediaType == 'tv' ? 'tvplay' : 'movie';
+    _activeIndex = 0; // CineSrc is first and the default.
+  }
+
+  String _sourceUrl(int index) {
+    final src = EmbedSources.sources[index];
+    return src.$2(id: widget.item.id, media: _mediaParam);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,14 +41,14 @@ class DetailScreen extends StatelessWidget {
               Stack(
                 children: [
                   Container(
-                    height: 220,
+                    height: 180,
                     width: double.infinity,
                     color: context.appSurfaceVariant,
-                    child: item.backdropPath == null ||
-                            item.backdropPath!.isEmpty
+                    child: widget.item.backdropPath == null ||
+                            widget.item.backdropPath!.isEmpty
                         ? _posterOnly(context)
                         : Image.network(
-                            '${AppConfig.tmdbImageBase}${item.backdropPath}',
+                            '${AppConfig.tmdbImageBase}${widget.item.backdropPath}',
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) => _posterOnly(context),
                           ),
@@ -39,20 +59,23 @@ class DetailScreen extends StatelessWidget {
                     child: IconButton(
                       onPressed: () => Navigator.pop(context),
                       style: IconButton.styleFrom(
-                        backgroundColor: context.appSurface.withValues(alpha: 0.9),
+                        backgroundColor:
+                            context.appSurface.withValues(alpha: 0.9),
                       ),
                       icon: const Icon(Icons.arrow_back),
                     ),
                   ),
                 ],
               ),
+              const SizedBox(height: 14),
+              _player(context),
               Padding(
-                padding: const EdgeInsets.all(22),
+                padding: const EdgeInsets.fromLTRB(22, 18, 22, 0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      item.title,
+                      widget.item.title,
                       style: context.appTextTheme.displayMedium?.copyWith(
                         color: context.appOnSurface,
                       ),
@@ -61,43 +84,22 @@ class DetailScreen extends StatelessWidget {
                     Row(
                       children: [
                         _iconLabel(context, Icons.star,
-                            item.rating.toStringAsFixed(1)),
+                            widget.item.rating.toStringAsFixed(1)),
                         const SizedBox(width: 14),
-                        if (item.releaseDate.isNotEmpty)
-                          _iconLabel(
-                              context, Icons.calendar_today, item.releaseDate),
+                        if (widget.item.releaseDate.isNotEmpty)
+                          _iconLabel(context, Icons.calendar_today,
+                              widget.item.releaseDate),
                       ],
                     ),
                     const SizedBox(height: 22),
                     Text(
-                      item.overview.isEmpty ? 'No synopsis available.' : item.overview,
+                      widget.item.overview.isEmpty
+                          ? 'No synopsis available.'
+                          : widget.item.overview,
                       style: context.appTextTheme.bodyLarge?.copyWith(
                         color: context.appOnSurfaceVariant,
                       ),
                     ),
-                    const SizedBox(height: 28),
-                    Text(
-                      'Watch',
-                      style: context.appTextTheme.headlineMedium?.copyWith(
-                        color: context.appOnSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
-                    ...EmbedSources.sources.map((src) {
-                      final name = src.$1;
-                      final url = src.$2(
-                        id: item.id,
-                        media: item.mediaType == 'tv' ? 'tvplay' : 'movie',
-                      );
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: _PlayerButton(
-                          label: name,
-                          url: url,
-                          title: item.title,
-                        ),
-                      );
-                    }),
                   ],
                 ),
               ),
@@ -108,14 +110,60 @@ class DetailScreen extends StatelessWidget {
     );
   }
 
+  // Inline player, ready to play immediately with the default (CineSrc) embed.
+  Widget _player(BuildContext context) {
+    return Container(
+      height: 210,
+      width: double.infinity,
+      color: Colors.black,
+      child: Stack(
+        children: [
+          Positioned.fill(child: PlayerView(url: _sourceUrl(_activeIndex))),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: _sourcePicker(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _sourcePicker() {
+    return Container(
+      color: Colors.black.withValues(alpha: 0.72),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      child: Row(
+        children: [
+          for (var i = 0; i < EmbedSources.sources.length; i++)
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 3),
+                child: _SourceChip(
+                  label: EmbedSources.sources[i].$1,
+                  active: i == _activeIndex,
+                  onTap: () {
+                    setState(() {
+                      _activeIndex = i;
+                    });
+                  },
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _posterOnly(BuildContext context) {
     return Center(
       child: SizedBox(
-        height: 160,
-        child: item.posterUrl.isEmpty
+        height: 140,
+        child: widget.item.posterUrl.isEmpty
             ? Icon(Icons.local_movies_outlined,
                 size: 64, color: context.appOnSurfaceVariant)
-            : Image.network(item.posterUrl, fit: BoxFit.contain),
+            : Image.network(widget.item.posterUrl, fit: BoxFit.contain),
       ),
     );
   }
@@ -131,49 +179,35 @@ class DetailScreen extends StatelessWidget {
   }
 }
 
-class _PlayerButton extends StatelessWidget {
-  const _PlayerButton({
+class _SourceChip extends StatelessWidget {
+  const _SourceChip({
     required this.label,
-    required this.url,
-    required this.title,
+    required this.active,
+    required this.onTap,
   });
 
   final String label;
-  final String url;
-  final String title;
+  final bool active;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: () => launchUrl(
-        Uri.parse(url),
-        mode: LaunchMode.externalApplication,
-      ),
-      borderRadius: BorderRadius.circular(10),
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(6),
       child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+        padding: const EdgeInsets.symmetric(vertical: 7),
         decoration: BoxDecoration(
-          color: context.appSurface,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.cardBorder),
+          color: active ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
         ),
-        child: Row(
-          children: [
-            Icon(Icons.play_circle_outline,
-                size: 22, color: context.appAccent),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Watch on $label',
-                style: context.appTextTheme.titleLarge?.copyWith(
-                  color: context.appOnSurface,
-                ),
-              ),
-            ),
-            Icon(Icons.arrow_forward_ios,
-                size: 16, color: context.appOnSurfaceVariant),
-          ],
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: context.appTextTheme.bodyMedium?.copyWith(
+            color: active ? Colors.black : Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
     );

@@ -12,10 +12,10 @@ class EmbedSources {
   static final List<
       (String name, String Function({required int id, required String media}))>
       sources = [
-    ('PlayAPI', ({required id, required media}) =>
-        'https://player.playapi.eu.cc/?id=$id&type=$media'),
     ('CineSrc', ({required id, required media}) =>
         'https://cinesrc.st/embed/${media == 'tvplay' ? 'tv' : 'movie'}/$id'),
+    ('PlayAPI', ({required id, required media}) =>
+        'https://player.playapi.eu.cc/?id=$id&type=$media'),
     ('Peachify', ({required id, required media}) =>
         'https://peachify.top/embed/${media == 'tvplay' ? 'tv' : 'movie'}/$id'),
     ('VidGod', ({required id, required media}) =>
