@@ -1,22 +1,54 @@
 import 'package:flutter/material.dart';
 
+import '../models/media_item.dart';
+import '../services/tmdb_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/media_poster.dart';
 import '../widgets/theme_toggle.dart';
+import 'detail_screen.dart';
+import 'search_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final _tmdb = TmdbService();
+  final _rowKeys = <String, Future<List<MediaItem>>>{};
+  late final Map<String, Future<List<MediaItem>> Function()> _tabs = {
+    'Movies': _tmdb.popularMovies,
+    'Series': _tmdb.popularSeries,
+  };
+  String _active = 'Movies';
+
+  @override
+  void initState() {
+    super.initState();
+    _rowKeys.addEntries(_tabs.entries);
+  }
+
+  void _setActive(String key) {
+    setState(() {
+      _active = key;
+    });
+    if (!_rowKeys.containsKey(key)) {
+      _rowKeys[key] = _tabs[key]!();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
+              child: Row(
                 children: [
                   Text(
                     'Kumi',
@@ -24,106 +56,118 @@ class HomeScreen extends StatelessWidget {
                       letterSpacing: -0.5,
                     ),
                   ),
+                  const Spacer(),
+                  IconButton(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SearchScreen()),
+                    ),
+                    icon: const Icon(Icons.search, size: 22),
+                  ),
+                  const SizedBox(width: 4),
                   const ThemeToggle(),
                 ],
               ),
-              const SizedBox(height: 36),
-              Text(
-                "Hello, I'm Kumi.",
-                style: context.appTextTheme.displayMedium?.copyWith(
-                  color: context.appOnSurface,
-                ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+              child: Row(
+                children: [
+                  for (final tab in _tabs.keys)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 18),
+                      child: InkWell(
+                        onTap: () => _setActive(tab),
+                        child: Text(
+                          tab,
+                          style: context.appTextTheme.titleLarge?.copyWith(
+                            color: tab == _active
+                                ? context.appOnSurface
+                                : context.appOnSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
-              const SizedBox(height: 12),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 320),
-                child: Text(
-                  'A fresh Flutter starter, built and shipped by GitHub Actions.',
-                  style: context.appTextTheme.bodyLarge?.copyWith(
-                    color: context.appOnSurfaceVariant,
-                  ),
-                ),
+            ),
+            Divider(
+              height: 18,
+              color: AppColors.cardBorder,
+            ),
+            Expanded(
+              child: FutureBuilder(
+                future: _rowKeys[_active],
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState != ConnectionState.done) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (snapshot.hasError) {
+                    return _errorView();
+                  }
+                  final items = snapshot.data ?? const [];
+                  return _posterGrid(items);
+                },
               ),
-              const SizedBox(height: 44),
-              Text(
-                'Get started',
-                style: context.appTextTheme.headlineMedium?.copyWith(
-                  color: context.appOnSurface,
-                ),
-              ),
-              const SizedBox(height: 18),
-              const _FeatureTile(
-                icon: Icons.brush_outlined,
-                title: 'Design a screen',
-                subtitle: 'Screens live in lib/screens and render here.',
-              ),
-              const _FeatureTile(
-                icon: Icons.contrast_outlined,
-                title: 'Tune the theme',
-                subtitle: 'Palette and type live in lib/theme.',
-              ),
-              const _FeatureTile(
-                icon: Icons.rocket_launch_outlined,
-                title: 'Ship an APK',
-                subtitle: 'Push a v* tag and Actions attaches the release.',
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
-}
 
-class _FeatureTile extends StatelessWidget {
-  const _FeatureTile({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-  });
+  Widget _posterGrid(List<MediaItem> items) {
+    return GridView.builder(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 160,
+        mainAxisSpacing: 20,
+        crossAxisSpacing: 14,
+        childAspectRatio: 0.5,
+      ),
+      itemCount: items.length,
+      itemBuilder: (context, i) {
+        final item = items[i];
+        return MediaPoster(
+          item: item,
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => DetailScreen(item: item)),
+          ),
+        );
+      },
+    );
+  }
 
-  final IconData icon;
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: context.appSurface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.cardBorder),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _errorView() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: context.appAccentSoft,
-                borderRadius: BorderRadius.circular(10),
+            Icon(Icons.wifi_off, size: 40, color: context.appOnSurfaceVariant),
+            const SizedBox(height: 16),
+            Text(
+              'Could not load titles.',
+              style: context.appTextTheme.headlineMedium?.copyWith(
+                color: context.appOnSurface,
               ),
-              child: Icon(icon, size: 21, color: context.appAccent),
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: context.appTextTheme.titleLarge?.copyWith(
-                      color: context.appOnSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(subtitle, style: context.appTextTheme.bodyMedium),
-                ],
-              ),
+            const SizedBox(height: 8),
+            Text(
+              'Check your connection and try again.',
+              style: context.appTextTheme.bodyMedium,
+            ),
+            const SizedBox(height: 20),
+            OutlinedButton(
+              onPressed: () {
+                setState(() {
+                  _rowKeys.remove(_active);
+                });
+                _rowKeys[_active] = _tabs[_active]!();
+              },
+              child: const Text('Retry'),
             ),
           ],
         ),

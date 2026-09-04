@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -15,21 +16,22 @@ void main() {
     expect(find.byType(SplashScreen), findsOneWidget);
 
     await tester.pump(const Duration(seconds: 2));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.byType(SplashScreen), findsNothing);
     expect(find.byType(HomeScreen), findsOneWidget);
-    expect(find.text("Hello, I'm Kumi."), findsOneWidget);
   });
 
-  testWidgets('home screen renders the getting-started tiles', (tester) async {
+  testWidgets('home screen renders the discovery shell', (tester) async {
     await tester.pumpWidget(const KumiApp());
     await tester.pump(const Duration(seconds: 2));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.text('Get started'), findsOneWidget);
-    expect(find.text('Design a screen'), findsOneWidget);
-    expect(find.text('Tune the theme'), findsOneWidget);
-    expect(find.text('Ship an APK'), findsOneWidget);
+    expect(find.text('Kumi'), findsWidgets);
+    expect(find.text('Movies'), findsOneWidget);
+    expect(find.text('Series'), findsOneWidget);
+    expect(find.byIcon(Icons.search), findsOneWidget);
   });
 }
