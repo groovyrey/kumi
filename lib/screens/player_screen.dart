@@ -54,7 +54,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     };
     setState(() {
       _diag.add('$label: $message');
-      if (_diag.length > 12) _diag.removeAt(0);
+      if (_diag.length > 40) _diag.removeAt(0);
     });
   }
 
@@ -126,10 +126,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 ),
               ),
               TextButton.icon(
-                onPressed: () => setState(() {
-                  _showDiag = false;
-                  _diag.clear();
-                }),
+                onPressed: () => setState(() => _showDiag = false),
                 style: TextButton.styleFrom(
                   foregroundColor: Colors.white,
                   backgroundColor: Colors.white.withValues(alpha: 0.15),
@@ -204,10 +201,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
             ),
           ),
           IconButton(
-            onPressed: () => setState(() {
-              _showDiag = !_showDiag;
-              if (_showDiag) _diag.clear();
-            }),
+            onPressed: () => setState(() => _showDiag = !_showDiag),
             icon: const Icon(Icons.bug_report_outlined,
                 color: Colors.white, size: 22),
           ),
