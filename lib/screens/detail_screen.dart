@@ -62,65 +62,64 @@ class DetailScreen extends StatelessWidget {
                     ),
             ),
             Padding(
-                padding: const EdgeInsets.fromLTRB(22, 6, 22, 28),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        _iconLabel(context, Icons.star,
-                            item.rating.toStringAsFixed(1)),
-                        const SizedBox(width: 14),
-                        if (item.releaseDate.isNotEmpty)
-                          _iconLabel(
-                              context, Icons.calendar_today, item.releaseDate),
-                      ],
+              padding: const EdgeInsets.fromLTRB(22, 6, 22, 28),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 2),
+                  Row(
+                    children: [
+                      _iconLabel(context, Icons.star,
+                          item.rating.toStringAsFixed(1)),
+                      const SizedBox(width: 14),
+                      if (item.releaseDate.isNotEmpty)
+                        _iconLabel(
+                            context, Icons.calendar_today, item.releaseDate),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  _playButton(context),
+                  const SizedBox(height: 24),
+                  Text(
+                    'Overview',
+                    style: context.appTextTheme.headlineSmall?.copyWith(
+                      color: context.appOnSurface,
                     ),
-                    const SizedBox(height: 20),
-                    _playButton(context),
-                    const SizedBox(height: 24),
-                    Text(
-                      'Overview',
-                      style: context.appTextTheme.headlineSmall?.copyWith(
-                        color: context.appOnSurface,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    item.overview.isEmpty
+                        ? 'No synopsis available.'
+                        : item.overview,
+                    style: context.appTextTheme.bodyLarge?.copyWith(
+                      color: context.appOnSurfaceVariant,
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 26),
+                  Text(
+                    'Watch on',
+                    style: context.appTextTheme.headlineSmall?.copyWith(
+                      color: context.appOnSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  ...EmbedSources.sources.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final name = entry.value.$1;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: _SourceButton(
+                        label: name,
+                        defaultSource: index == 0,
+                        onTap: () => _play(context, index: index),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      item.overview.isEmpty
-                          ? 'No synopsis available.'
-                          : item.overview,
-                      style: context.appTextTheme.bodyLarge?.copyWith(
-                        color: context.appOnSurfaceVariant,
-                        height: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 26),
-                    Text(
-                      'Watch on',
-                      style: context.appTextTheme.headlineSmall?.copyWith(
-                        color: context.appOnSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    ...EmbedSources.sources.asMap().entries.map((entry) {
-                      final index = entry.key;
-                      final name = entry.value.$1;
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: _SourceButton(
-                          label: name,
-                          defaultSource: index == 0,
-                          onTap: () => _play(context, index: index),
-                        ),
-                      );
-                    }),
-                  ],
-                ),
+                    );
+                  }),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
