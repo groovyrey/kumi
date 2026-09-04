@@ -29,97 +29,124 @@ class DetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: context.appSurface,
-        foregroundColor: context.appOnSurface,
-        elevation: 0,
-        surfaceTintColor: Colors.transparent,
-        titleSpacing: 0,
-        title: Text(
-          item.title,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: context.appTextTheme.titleLarge?.copyWith(
-            color: context.appOnSurface,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              height: 240,
-              width: double.infinity,
-              color: context.appSurfaceVariant,
-              child: item.backdropPath == null || item.backdropPath!.isEmpty
-                  ? _posterOnly(context)
-                  : Image.network(
-                      '${AppConfig.tmdbImageBase}${item.backdropPath}',
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _posterOnly(context),
-                    ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(22, 6, 22, 28),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Stack(
                 children: [
-                  const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      _iconLabel(context, Icons.star,
-                          item.rating.toStringAsFixed(1)),
-                      const SizedBox(width: 14),
-                      if (item.releaseDate.isNotEmpty)
-                        _iconLabel(
-                            context, Icons.calendar_today, item.releaseDate),
-                    ],
+                  Container(
+                    height: 240,
+                    width: double.infinity,
+                    color: context.appSurfaceVariant,
+                    child: item.backdropPath == null ||
+                            item.backdropPath!.isEmpty
+                        ? _posterOnly(context)
+                        : Image.network(
+                            '${AppConfig.tmdbImageBase}${item.backdropPath}',
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => _posterOnly(context),
+                          ),
                   ),
-                  const SizedBox(height: 20),
-                  _playButton(context),
-                  const SizedBox(height: 24),
-                  Text(
-                    'Overview',
-                    style: context.appTextTheme.headlineSmall?.copyWith(
-                      color: context.appOnSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    item.overview.isEmpty
-                        ? 'No synopsis available.'
-                        : item.overview,
-                    style: context.appTextTheme.bodyLarge?.copyWith(
-                      color: context.appOnSurfaceVariant,
-                      height: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 26),
-                  Text(
-                    'Watch on',
-                    style: context.appTextTheme.headlineSmall?.copyWith(
-                      color: context.appOnSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  ...EmbedSources.sources.asMap().entries.map((entry) {
-                    final index = entry.key;
-                    final name = entry.value.$1;
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: _SourceButton(
-                        label: name,
-                        defaultSource: index == 0,
-                        onTap: () => _play(context, index: index),
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: Container(
+                      height: 60,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                          colors: [
+                            context.appSurface,
+                            context.appSurface.withValues(alpha: 0.0),
+                          ],
+                        ),
                       ),
-                    );
-                  }),
+                    ),
+                  ),
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    child: IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: IconButton.styleFrom(
+                        backgroundColor:
+                            context.appSurface.withValues(alpha: 0.9),
+                      ),
+                      icon: const Icon(Icons.arrow_back),
+                    ),
+                  ),
                 ],
               ),
-            ),
-          ],
+              Padding(
+                padding: const EdgeInsets.fromLTRB(22, 6, 22, 28),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.title,
+                      style: context.appTextTheme.displayMedium?.copyWith(
+                        color: context.appOnSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        _iconLabel(context, Icons.star,
+                            item.rating.toStringAsFixed(1)),
+                        const SizedBox(width: 14),
+                        if (item.releaseDate.isNotEmpty)
+                          _iconLabel(
+                              context, Icons.calendar_today, item.releaseDate),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    _playButton(context),
+                    const SizedBox(height: 24),
+                    Text(
+                      'Overview',
+                      style: context.appTextTheme.headlineSmall?.copyWith(
+                        color: context.appOnSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      item.overview.isEmpty
+                          ? 'No synopsis available.'
+                          : item.overview,
+                      style: context.appTextTheme.bodyLarge?.copyWith(
+                        color: context.appOnSurfaceVariant,
+                        height: 1.5,
+                      ),
+                    ),
+                    const SizedBox(height: 26),
+                    Text(
+                      'Watch on',
+                      style: context.appTextTheme.headlineSmall?.copyWith(
+                        color: context.appOnSurface,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    ...EmbedSources.sources.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final name = entry.value.$1;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: _SourceButton(
+                          label: name,
+                          defaultSource: index == 0,
+                          onTap: () => _play(context, index: index),
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
