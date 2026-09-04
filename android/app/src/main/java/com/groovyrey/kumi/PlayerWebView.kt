@@ -93,7 +93,15 @@ internal class PlayerWebView(
             // Log every resource/fetch/XHR/HLS request so we can spot the one
             // that never resolves during playback. Returning null never blocks.
             val u = request?.url?.toString()
-            if (u != null) Log.i(TAG, "req: $u")
+            if (u != null) {
+                Log.i(TAG, "req: $u")
+                // Forward the meaningful ones (page navigation + video/media
+                // stream requests) to the app so they show on device without
+                // logcat. Segment-by-segment .ts/.tsa noise is throttled away.
+                if (request?.isForMainFrame == true || isMediaUrl(u)) {
+                    channel.invokeMethod("onRequest", u)
+                }
+            }
             return null
         }
 
@@ -103,12 +111,14 @@ internal class PlayerWebView(
             super.onReceivedError(view, request, error)
             val u = request?.url?.toString()
             Log.e(TAG, "pageError code=${error?.errorCode} desc=${error?.description} url=$u")
-            if (request?.isForMainFrame == true) {
-                channel.invokeMethod(
-                    "onPageError",
-                    mapOf("code" to (error?.errorCode ?: -1), "url" to u)
+            channel.invokeMethod(
+                "onPageError",
+                mapOf(
+                    "code" to ("err:${error?.errorCode ?: -1}"),
+                    "url" to u,
+                    "desc" to (error?.description?.toString() ?: "")
                 )
-            }
+            )
         }
 
         override fun onReceivedHttpError(
@@ -118,16 +128,24 @@ internal class PlayerWebView(
             val u = request?.url?.toString()
             val status = errorResponse?.statusCode
             Log.e(TAG, "httpError $status url=$u")
-            if (request?.isForMainFrame == true) {
+            if (u != null && isMediaUrl(u)) {
                 channel.invokeMethod(
                     "onPageError",
-                    mapOf("code" to ("http:$status"), "url" to u)
+                    mapOf("code" to ("http:$status"), "url" to u, "desc" to "")
                 )
             }
         }
     }
 
     override fun getView(): android.view.View = webView
+
+    private fun isMediaUrl(url: String): Boolean {
+        val u = url.lowercase()
+        return u.contains(".m3u8") || u.contains(".mpd") ||
+            u.contains("playlist") || u.contains("stream") ||
+            u.contains(".mp4") || u.contains("videosrc") ||
+            u.contains("/api/streams/") || u.contains("hls")
+    }
 
     fun loadInitialUrl(url: String) {
         webView.loadUrl(url)

@@ -12,10 +12,16 @@ class PlayerWebView extends StatefulWidget {
     super.key,
     required this.url,
     required this.onLoadChanged,
+    this.onDiagnostics,
   });
 
   final String url;
   final ValueChanged<bool> onLoadChanged;
+
+  /// Debug callback receiving (kind, message) where kind is 'page', 'req',
+  /// or 'error'. Used by the player screen to show live network diagnostics
+  /// on-device without logcat.
+  final void Function(String kind, String message)? onDiagnostics;
 
   @override
   State<PlayerWebView> createState() => _PlayerWebViewState();
@@ -45,10 +51,23 @@ class _PlayerWebViewState extends State<PlayerWebView> {
     switch (call.method) {
       case 'onPageStarted':
         widget.onLoadChanged(true);
+        widget.onDiagnostics?.call('page', call.arguments?.toString() ?? '');
         break;
       case 'onPageFinished':
+        widget.onLoadChanged(false);
+        widget.onDiagnostics?.call('page', call.arguments?.toString() ?? '');
+        break;
+      case 'onRequest':
+        widget.onDiagnostics?.call('req', call.arguments?.toString() ?? '');
+        break;
       case 'onPageError':
         widget.onLoadChanged(false);
+        final map = call.arguments as Map<dynamic, dynamic>? ?? const {};
+        final code = map['code']?.toString() ?? '';
+        final url = map['url']?.toString() ?? '';
+        final desc = map['desc']?.toString() ?? '';
+        widget.onDiagnostics
+            ?.call('error', '$code | $url${desc.isNotEmpty ? ' | $desc' : ''}');
         break;
     }
     return null;

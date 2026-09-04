@@ -34,6 +34,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
   late String _url;
   late int _loadKey;
   bool _loading = true;
+  bool _showDiag = false;
+  final List<String> _diag = [];
 
   @override
   void initState() {
@@ -41,6 +43,19 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _index = widget.initialIndex;
     _url = _urlForIndex(_index);
     _loadKey = 0;
+  }
+
+  void _pushDiag(String kind, String message) {
+    if (!mounted) return;
+    final label = switch (kind) {
+      'error' => 'ERR',
+      'req' => 'REQ',
+      _ => 'PAGE',
+    };
+    setState(() {
+      _diag.add('$label: $message');
+      if (_diag.length > 12) _diag.removeAt(0);
+    });
   }
 
   String _urlForIndex(int index) {
@@ -55,6 +70,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       _url = _urlForIndex(index);
       _loadKey++; // force a fresh native view for the new source
       _loading = true;
+      _diag.clear();
     });
   }
 
@@ -74,16 +90,83 @@ class _PlayerScreenState extends State<PlayerScreen> {
                         setState(() => _loading = loading);
                       }
                     },
+                    onDiagnostics: _pushDiag,
                   ),
             ),
             if (_loading)
               const Center(
                 child: CircularProgressIndicator(color: Colors.white),
               ),
+            if (_showDiag) Positioned.fill(child: _diagOverlay(context)),
             Positioned(top: 0, left: 0, right: 0, child: _topBar(context)),
             Positioned(left: 0, right: 0, bottom: 0, child: _bottomBar(context)),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _diagOverlay(BuildContext context) {
+    return Container(
+      color: Colors.black.withValues(alpha: 0.85),
+      padding: const EdgeInsets.fromLTRB(16, 70, 16, 90),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Network diagnostics',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              TextButton.icon(
+                onPressed: () => setState(() {
+                  _showDiag = false;
+                  _diag.clear();
+                }),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  backgroundColor: Colors.white.withValues(alpha: 0.15),
+                ),
+                icon: const Icon(Icons.close, size: 18),
+                label: const Text('Close'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Expanded(
+            child: _diag.isEmpty
+                ? const Center(
+                    child: Text(
+                      'Waiting for requests...',
+                      style: TextStyle(color: Colors.white70),
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: _diag.length,
+                    itemBuilder: (_, i) {
+                      final isErr = _diag[i].startsWith('ERR');
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          _diag[i],
+                          style: TextStyle(
+                            color: isErr ? Colors.redAccent : Colors.lightBlueAccent,
+                            fontSize: 11,
+                            fontFamily: 'monospace',
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
       ),
     );
   }
@@ -119,6 +202,14 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 fontWeight: FontWeight.w600,
               ),
             ),
+          ),
+          IconButton(
+            onPressed: () => setState(() {
+              _showDiag = !_showDiag;
+              if (_showDiag) _diag.clear();
+            }),
+            icon: const Icon(Icons.bug_report_outlined,
+                color: Colors.white, size: 22),
           ),
         ],
       ),
