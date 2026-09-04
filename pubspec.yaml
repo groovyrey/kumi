@@ -15,8 +15,8 @@ dependencies:
   shared_preferences: ^2.3.3
   http: ^1.2.2
   webview_flutter: ^4.10.0
-  webview_flutter_android: ^3.16.1
-  webview_flutter_wkwebview: ^3.13.0
+  webview_flutter_android: ^4.0.0
+  webview_flutter_wkwebview: ^4.0.0
 
 dev_dependencies:
   flutter_test:
