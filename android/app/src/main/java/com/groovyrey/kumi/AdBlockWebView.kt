@@ -12,11 +12,15 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.platform.PlatformView
 import java.io.ByteArrayInputStream
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.util.HashSet
 
 /**
  * A native Android WebView that blocks ad/tracker requests at the network
- * layer (the same idea as an ad-blocking browser), while letting the actual
- * video/playback requests load. Hosts are matched against a blocklist.
+ * layer using a bundled EasyList/EasyPrivacy host blocklist, while letting the
+ * actual video/playback requests load. It also mocks common ad-API signals so
+ * anti-adblock detection doesn't withhold playback.
  */
 internal class AdBlockWebView(
     context: android.content.Context,
@@ -24,6 +28,9 @@ internal class AdBlockWebView(
 ) : PlatformView, MethodChannel.MethodCallHandler {
 
     private val webView: WebView = WebView(context).apply { configure() }
+
+    // Load the bundled blocklist once into a set for fast suffix matching.
+    private val blockedHosts: Set<String> = loadBlockedHosts(context)
 
     init {
         channel.setMethodCallHandler(this)
@@ -45,7 +52,8 @@ internal class AdBlockWebView(
         webView.webViewClient = AdBlockClient()
         webView.webChromeClient = object : WebChromeClient() {
             override fun onCreateWindow(
-                view: WebView?, isDialog: Boolean, isUserGesture: Boolean, resultMsg: android.os.Message?
+                view: WebView?, isDialog: Boolean, isUserGesture: Boolean,
+                resultMsg: android.os.Message?
             ): Boolean {
                 // Block popup windows / new tabs opened by the embed (ad redirects).
                 return false
@@ -65,20 +73,12 @@ internal class AdBlockWebView(
         override fun shouldOverrideUrlLoading(
             view: WebView?, request: WebResourceRequest?
         ): Boolean {
-            val url = request?.url?.toString() ?: return false
-            val host = request.url?.host?.lowercase() ?: return false
+            val host = request?.url?.host?.lowercase() ?: return false
 
-            // Do not leave the player into ad/redirect targets (e.g. click-layer
-            // "open in new tab"). Allow the embed + playback origins.
+            // Only stop navigation to known ad/redirect hosts. Everything else
+            // (playback redirects, SPAs) proceeds so anti-adblock doesn't trip.
             if (isBlockedHost(host)) {
-                return true
-            }
-            // Never hand navigation to an external browser/app.
-            if (!host.endsWith("cinesrc.st") &&
-                !host.endsWith("cineflix.st") &&
-                !isVideoHost(host) &&
-                !isAdSafe(host)
-            ) {
+                reportBlocked(host, request?.url?.toString())
                 return true
             }
             return super.shouldOverrideUrlLoading(view, request)
@@ -87,20 +87,15 @@ internal class AdBlockWebView(
         override fun shouldInterceptRequest(
             view: WebView?, request: WebResourceRequest?
         ): WebResourceResponse? {
-            val url = request?.url?.toString() ?: return null
-            val host = request.url?.host?.lowercase() ?: return null
+            val host = request?.url?.host?.lowercase() ?: return null
 
-            // Let the page, scripts, and video always load.
-            if (host.endsWith("cinesrc.st")) return null
-            if (isVideoHost(host)) return null
+            // Never filter the player's own origin or video CDNs: the SDK
+            // handshake drives playback and blocking it breaks the video.
+            if (isEmbedHost(host) || isVideoHost(host)) return null
 
-            // Intercept known ad/tracker hosts with an empty response.
             if (isBlockedHost(host)) {
-                return WebResourceResponse(
-                    "text/plain",
-                    "utf-8",
-                    ByteArrayInputStream(ByteArray(0))
-                )
+                reportBlocked(host, request?.url?.toString())
+                return emptyResource()
             }
             return null
         }
@@ -113,6 +108,8 @@ internal class AdBlockWebView(
         override fun onPageFinished(view: WebView?, url: String?) {
             super.onPageFinished(view, url)
             channel.invokeMethod("onPageFinished", url)
+            // Mock ad signals so detection scripts believe ads loaded.
+            injectAdShims(view)
         }
 
         override fun onReceivedError(
@@ -124,15 +121,75 @@ internal class AdBlockWebView(
     }
 
     private fun isBlockedHost(host: String): Boolean {
-        return BLOCKED_SUFFIXES.any { host == it || host.endsWith(".$it") }
+        // Test every suffix of the host against the set (e.g. a.b.com -> a.b.com,
+        // b.com, com). Matches EasyList `||domain^` semantics across subdomains.
+        var h: String = host
+        while (true) {
+            if (blockedHosts.contains(h)) return true
+            val idx = h.indexOf('.')
+            if (idx < 0) return false
+            h = h.substring(idx + 1)
+        }
+    }
+
+    private fun isEmbedHost(host: String): Boolean {
+        return EMBED_SUFFIXES.any { host == it || host.endsWith(".$it") }
     }
 
     private fun isVideoHost(host: String): Boolean {
         return VIDEO_SUFFIXES.any { host == it || host.endsWith(".$it") }
     }
 
-    private fun isAdSafe(host: String): Boolean {
-        return ALLOW_SUFFIXES.any { host == it || host.endsWith(".$it") }
+    private fun injectAdShims(view: WebView?) {
+        if (view == null) return
+        val js = """
+            (function() {
+              if (!window.adsbygoogle) {
+                var push = function() { try { return arguments[0]; } catch(e){} };
+                window.adsbygoogle = { length: 0, push: push };
+              }
+              if (window.AdSense === undefined) window.AdSense = {};
+              if (window.google_ad_status === undefined) window.google_ad_status = 0;
+              if (window._pwGoogleGpt === undefined) window._pwGoogleGpt = [];
+              if (window.googletag === undefined) {
+                window.googletag = { cmd: [], pubads: function(){ return { enableSingleRequest:function(){}, refresh:function(){}, getSlotIdIfActual:function(){return 0;} }; }, apiReady: true, openads: {} };
+              }
+            })();
+        """.trimIndent()
+        view.evaluateJavascript(js, null)
+    }
+
+    private fun emptyResource(): WebResourceResponse {
+        return WebResourceResponse("text/plain", "utf-8", ByteArrayInputStream(ByteArray(0)))
+    }
+
+    private fun reportBlocked(host: String, url: String?) {
+        // Report each unique host only once to avoid flooding the channel.
+        if (!reportedHosts.add(host)) return
+        try {
+            channel.invokeMethod("onBlocked", mapOf("host" to host, "url" to url))
+        } catch (_: Exception) {
+            // Best effort only.
+        }
+    }
+
+    private val reportedHosts: MutableSet<String> =
+        java.util.Collections.synchronizedSet(HashSet<String>())
+
+    private fun loadBlockedHosts(context: android.content.Context): Set<String> {
+        val set = HashSet<String>(200000)
+        try {
+            val stream = context.assets.open("adblock_hosts.txt")
+            BufferedReader(InputStreamReader(stream)).useLines { lines ->
+                for (line in lines) {
+                    val h = line.trim().lowercase()
+                    if (h.isNotEmpty()) set.add(h)
+                }
+            }
+        } catch (_: Exception) {
+            // If the asset is missing, fall back to a near-empty set (video still plays).
+        }
+        return set
     }
 
     override fun getView(): android.view.View = webView
@@ -152,46 +209,23 @@ internal class AdBlockWebView(
                 if (url != null) webView.loadUrl(url)
                 result.success(null)
             }
-            "reload" -> {
-                webView.reload()
-                result.success(null)
-            }
             else -> result.notImplemented()
         }
     }
 
     companion object {
+        // Never filter these origins: their SDK handshake drives playback.
+        val EMBED_SUFFIXES = listOf(
+            "cinesrc.st", "cineflix.st",
+            "playapi.eu.cc", "peachify.top", "vidgod.net", "moviesapi.club",
+            "googleapis.com", "gstatic.com", "fonts.googleapis.com"
+        )
+
+        // Common video CDNs that must never be filtered.
         val VIDEO_SUFFIXES = listOf(
             "akamaized.net", "cloudfront.net", "amazonaws.com",
             "fastly.net", "b-cdn.net", "cdn.dev", "googlevideo.com", "vimeocdn.com",
             "vimeo.com", "bitmovin.com"
-        )
-
-        val ALLOW_SUFFIXES = listOf(
-            "cinesrc.st", "cineflix.st", "cinehub", "moviesapi.club",
-            "googleapis.com", "gstatic.com", "fonts.googleapis.com"
-        )
-
-        // Ad & tracker hosts — matched by exact host or one-level subdomain suffix.
-        val BLOCKED_SUFFIXES = listOf(
-            // CineSrc's ad/tracker script hosts (audio/impression + ad SDK).
-            "a.cineflix.st", "a2.cineflix.st", "pa-cineflix", "ads-cineflix",
-            // Google ad serving.
-            "doubleclick.net", "googlesyndication.com", "googleadservices.com",
-            "adservice.google.com", "ads.google.com",
-            // Generic ad / analytics networks.
-            "adsterra.com", "popads.net", "propellerads.com", "exoclick.com",
-            "adroll.com", "criteo.com", "outbrain.com", "taboola.com", "pubmatic.com",
-            "rubiconproject.com", "openx.net", "adnxs.com", "appnexus.com",
-            "smartadserver.com", "onclickads.net", "trafficjunky.net", "juicyads.com",
-            // Trackers / analytics.
-            "scorecardresearch.com", "quantserve.com", "chartbeat.com", "hotjar.com",
-            "segment.io", "segment.com", "amplitude.com", "mixpanel.com",
-            "fullstory.com", "clarity.ms", "plausible.io", "matomo.org",
-            "mouseflow.com", "crazyegg.com", "newrelic.com", "sentry.io",
-            "2mdn.net", "pagead2.googlesyndication.com",
-            // Redirect / shortener / click layers.
-            "zemanta.com", "imrworldwide.com", "tynt.com"
         )
     }
 }

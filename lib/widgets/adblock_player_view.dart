@@ -11,10 +11,12 @@ class AdBlockPlayerView extends StatefulWidget {
     super.key,
     required this.url,
     required this.onLoadChanged,
+    this.onBlocked,
   });
 
   final String url;
   final ValueChanged<bool> onLoadChanged;
+  final ValueChanged<String>? onBlocked;
 
   @override
   State<AdBlockPlayerView> createState() => _AdBlockPlayerViewState();
@@ -48,6 +50,12 @@ class _AdBlockPlayerViewState extends State<AdBlockPlayerView> {
       case 'onPageFinished':
       case 'onPageError':
         widget.onLoadChanged(false);
+        break;
+      case 'onBlocked':
+        final host = call.arguments is Map
+            ? (call.arguments as Map)['host']
+            : null;
+        widget.onBlocked?.call(host?.toString() ?? 'unknown');
         break;
     }
     return null;

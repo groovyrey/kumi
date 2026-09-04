@@ -66,15 +66,18 @@ class _PlayerScreenState extends State<PlayerScreen> {
         child: Stack(
           children: [
             Positioned.fill(
-              child: AdBlockPlayerView(
-                key: ValueKey(_loadKey),
-                url: _url,
-                onLoadChanged: (loading) {
-                  if (mounted && loading != _loading) {
-                    setState(() => _loading = loading);
-                  }
-                },
-              ),
+                  child: AdBlockPlayerView(
+                    key: ValueKey(_loadKey),
+                    url: _url,
+                    onLoadChanged: (loading) {
+                      if (mounted && loading != _loading) {
+                        setState(() => _loading = loading);
+                      }
+                    },
+                    onBlocked: (host) {
+                      debugPrint('[kumi] blocked ad/tracker host: $host');
+                    },
+                  ),
             ),
             if (_loading)
               const Center(
