@@ -11,11 +11,12 @@ import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.platform.PlatformView
 
 /**
- * A native Android WebView used as the in-app player. It behaves like a normal
- * browser so embedded players always load and play (no request filtering or
- * signal mocking), with two safety measures: ad/new-tab popups are blocked and
- * JS alert prompts are auto-dismissed, so ads can't yank the user out of the
- * app. Media autoplays without requiring a user gesture.
+ * A native Android WebView used as the in-app player. It presents a desktop
+ * Chrome user agent and allows mixed content so third-party embed players
+ * (CineSrc, PlayAPI, ...) render the desktop player and can pull their video
+ * stream over HTTP without the WebView blocking it. Ad/new-tab popups are
+ * blocked and blocking JS alerts are auto-dismissed so ads can't yank the user
+ * out of the app or stall the player. Media autoplays without a gesture.
  */
 internal class PlayerWebView(
     context: android.content.Context,
@@ -34,12 +35,19 @@ internal class PlayerWebView(
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
         settings.mediaPlaybackRequiresUserGesture = false
-        settings.javaScriptCanOpenWindowsAutomatically = false
         settings.setSupportMultipleWindows(false)
+        settings.javaScriptCanOpenWindowsAutomatically = false
         settings.loadWithOverviewMode = true
         settings.useWideViewPort = true
         settings.blockNetworkImage = false
         settings.blockNetworkLoads = false
+        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW)
+        // Many streaming embeds are desktop-first and show a blank/loading player
+        // for unknown or mobile user agents. Present a desktop Chrome UA so they
+        // render the working desktop player.
+        settings.userAgentString =
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+            "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 
         webView.webViewClient = SimpleClient()
         webView.webChromeClient = object : WebChromeClient() {
