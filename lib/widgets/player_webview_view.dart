@@ -1,29 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-/// Factory id registered natively in AndroidMainActivity (AdBlockWebViewFactory).
-const _kViewType = 'adblock-webview';
+/// Factory id registered natively in AndroidMainActivity (PlayerWebViewFactory).
+const _kViewType = 'player-webview';
 
-/// A native, ad-filtered WebView. It renders with `AndroidView` and routes load
-/// state back to [onLoadChanged] over a per-instance method channel.
-class AdBlockPlayerView extends StatefulWidget {
-  const AdBlockPlayerView({
+/// A native WebView used as the in-app player (normal browser behavior with
+/// popup/new-tab blocking). It renders with `AndroidView` and routes load state
+/// back to [onLoadChanged] over a per-instance method channel.
+class PlayerWebView extends StatefulWidget {
+  const PlayerWebView({
     super.key,
     required this.url,
     required this.onLoadChanged,
-    this.onBlocked,
   });
 
   final String url;
   final ValueChanged<bool> onLoadChanged;
-  final ValueChanged<String>? onBlocked;
 
   @override
-  State<AdBlockPlayerView> createState() => _AdBlockPlayerViewState();
+  State<PlayerWebView> createState() => _PlayerWebViewState();
 }
 
-class _AdBlockPlayerViewState extends State<AdBlockPlayerView> {
-  late final String _channelName = 'kumi/adblock_${_sharedCounter()}';
+class _PlayerWebViewState extends State<PlayerWebView> {
+  late final String _channelName = 'kumi/player_${_sharedCounter()}';
   MethodChannel? _channel;
 
   static int _c = 0;
@@ -50,12 +49,6 @@ class _AdBlockPlayerViewState extends State<AdBlockPlayerView> {
       case 'onPageFinished':
       case 'onPageError':
         widget.onLoadChanged(false);
-        break;
-      case 'onBlocked':
-        final host = call.arguments is Map
-            ? (call.arguments as Map)['host']
-            : null;
-        widget.onBlocked?.call(host?.toString() ?? 'unknown');
         break;
     }
     return null;

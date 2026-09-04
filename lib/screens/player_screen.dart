@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../config.dart';
 import '../theme/app_theme.dart';
-import '../widgets/adblock_player_view.dart';
+import '../widgets/player_webview_view.dart';
 
 /// A Netflix-style immersive full-screen player backed by a native ad-filtered
 /// WebView. The default provider is autoplayed on entry; providers can be
@@ -66,16 +66,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
         child: Stack(
           children: [
             Positioned.fill(
-                  child: AdBlockPlayerView(
+                  child: PlayerWebView(
                     key: ValueKey(_loadKey),
                     url: _url,
                     onLoadChanged: (loading) {
                       if (mounted && loading != _loading) {
                         setState(() => _loading = loading);
                       }
-                    },
-                    onBlocked: (host) {
-                      debugPrint('[kumi] blocked ad/tracker host: $host');
                     },
                   ),
             ),

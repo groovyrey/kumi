@@ -29,70 +29,44 @@ class DetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Stack(
-                children: [
-                  Container(
-                    height: 240,
-                    width: double.infinity,
-                    color: context.appSurfaceVariant,
-                    child: item.backdropPath == null ||
-                            item.backdropPath!.isEmpty
-                        ? _posterOnly(context)
-                        : Image.network(
-                            '${AppConfig.tmdbImageBase}${item.backdropPath}',
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => _posterOnly(context),
-                          ),
-                  ),
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    child: Container(
-                      height: 60,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.bottomCenter,
-                          end: Alignment.topCenter,
-                          colors: [
-                            context.appSurface,
-                            context.appSurface.withValues(alpha: 0.0),
-                          ],
-                        ),
-                      ),
+      appBar: AppBar(
+        backgroundColor: context.appSurface,
+        foregroundColor: context.appOnSurface,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        titleSpacing: 0,
+        title: Text(
+          item.title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: context.appTextTheme.titleLarge?.copyWith(
+            color: context.appOnSurface,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              height: 240,
+              width: double.infinity,
+              color: context.appSurfaceVariant,
+              child: item.backdropPath == null || item.backdropPath!.isEmpty
+                  ? _posterOnly(context)
+                  : Image.network(
+                      '${AppConfig.tmdbImageBase}${item.backdropPath}',
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _posterOnly(context),
                     ),
-                  ),
-                  Positioned(
-                    top: 8,
-                    left: 8,
-                    child: IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: IconButton.styleFrom(
-                        backgroundColor:
-                            context.appSurface.withValues(alpha: 0.9),
-                      ),
-                      icon: const Icon(Icons.arrow_back),
-                    ),
-                  ),
-                ],
-              ),
-              Padding(
+            ),
+            Padding(
                 padding: const EdgeInsets.fromLTRB(22, 6, 22, 28),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      item.title,
-                      style: context.appTextTheme.displayMedium?.copyWith(
-                        color: context.appOnSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 2),
                     Row(
                       children: [
                         _iconLabel(context, Icons.star,

@@ -11,8 +11,8 @@ class MainActivity : FlutterActivity() {
             .platformViewsController
             .registry
             .registerViewFactory(
-                AdBlockWebViewFactory.VIEW_TYPE_ID,
-                AdBlockWebViewFactory(flutterEngine.dartExecutor.binaryMessenger)
+                PlayerWebViewFactory.VIEW_TYPE_ID,
+                PlayerWebViewFactory(flutterEngine.dartExecutor.binaryMessenger)
             )
     }
 }
