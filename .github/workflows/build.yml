@@ -24,14 +24,15 @@ jobs:
           distribution: temurin
           java-version: 17
 
+      - name: Setup Gradle cache
+        uses: gradle/actions/setup-gradle@v4
+
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
           cache: true
-
-      - name: Flutter info
-        run: flutter doctor -v
+          pub-cache: true
 
       - name: Install dependencies
         run: flutter pub get

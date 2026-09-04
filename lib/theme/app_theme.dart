@@ -16,6 +16,7 @@ class AppColors {
   static const _lAccent = Color(0xFF1F6C9F); // muted blue text/icon
   static const _lAccentSoft = Color(0xFFE1F3FE); // pale blue
   static const _lSurfaceVar = Color(0xFFF0EEE9);
+  static const _lOnAccent = Color(0xFFFFFFFF);
 
   // ── Dark theme base values ────────────────────────────────────────
   static const _dBckground = Color(0xFF131214); // warm near-black
@@ -28,6 +29,7 @@ class AppColors {
   static const _dAccent = Color(0xFF85C1E9);
   static const _dAccentSoft = Color(0xFF1B2A33);
   static const _dSurfaceVar = Color(0xFF26252A);
+  static const _dOnAccent = Color(0xFF00141F);
 
   // ── Runtime brightness flag ────────────────────────────────────────
   static bool _isDark = false;
@@ -46,6 +48,7 @@ class AppColors {
   static Color get accent => _isDark ? _dAccent : _lAccent;
   static Color get accentSoft => _isDark ? _dAccentSoft : _lAccentSoft;
   static Color get surfaceVariant => _isDark ? _dSurfaceVar : _lSurfaceVar;
+  static Color get onAccent => _isDark ? _dOnAccent : _lOnAccent;
 }
 
 // ── Theme builders ──────────────────────────────────────────────────
@@ -165,5 +168,6 @@ extension AppThemeX on BuildContext {
   Color get appSurfaceVariant => AppColors.surfaceVariant;
   Color get appAccent => AppColors.accent;
   Color get appAccentSoft => AppColors.accentSoft;
+  Color get appOnAccent => AppColors.onAccent;
   TextTheme get appTextTheme => Theme.of(this).textTheme;
 }
