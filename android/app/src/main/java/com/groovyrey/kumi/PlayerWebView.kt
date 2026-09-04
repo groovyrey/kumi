@@ -1,14 +1,20 @@
 package com.groovyrey.kumi
 
 import android.annotation.SuppressLint
+import android.util.Log
 import android.webkit.JsResult
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.platform.PlatformView
+
+private const val TAG = "KumiPlayerWebView"
 
 /**
  * A native Android WebView used as the in-app player. It presents a desktop
@@ -71,19 +77,53 @@ internal class PlayerWebView(
     private inner class SimpleClient : WebViewClient() {
         override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
             super.onPageStarted(view, url, favicon)
+            Log.i(TAG, "pageStart: $url")
             channel.invokeMethod("onPageStarted", url)
         }
 
         override fun onPageFinished(view: WebView?, url: String?) {
             super.onPageFinished(view, url)
+            Log.i(TAG, "pageFinish: $url")
             channel.invokeMethod("onPageFinished", url)
         }
 
+        override fun shouldInterceptRequest(
+            view: WebView?, request: WebResourceRequest?
+        ): WebResourceResponse? {
+            // Log every resource/fetch/XHR/HLS request so we can spot the one
+            // that never resolves during playback. Returning null never blocks.
+            val u = request?.url?.toString()
+            if (u != null) Log.i(TAG, "req: $u")
+            return null
+        }
+
         override fun onReceivedError(
-            view: WebView?, errorCode: Int, description: String?, failingUrl: String?
+            view: WebView?, request: WebResourceRequest?, error: WebResourceError?
         ) {
-            super.onReceivedError(view, errorCode, description, failingUrl)
-            channel.invokeMethod("onPageError", mapOf("code" to errorCode, "url" to failingUrl))
+            super.onReceivedError(view, request, error)
+            val u = request?.url?.toString()
+            Log.e(TAG, "pageError code=${error?.errorCode} desc=${error?.description} url=$u")
+            if (request?.isForMainFrame == true) {
+                channel.invokeMethod(
+                    "onPageError",
+                    mapOf("code" to (error?.errorCode ?: -1), "url" to u)
+                )
+            }
+        }
+
+        override fun onReceivedHttpError(
+            view: WebView?, request: WebResourceRequest?, errorResponse: WebResourceResponse?
+        ) {
+            super.onReceivedHttpError(view, request, errorResponse)
+            val u = request?.url?.toString()
+            val status = errorResponse?.statusCode
+            Log.e(TAG, "httpError $status url=$u")
+            if (request?.isForMainFrame == true) {
+                channel.invokeMethod(
+                    "onPageError",
+                    mapOf("code" to ("http:$status"), "url" to u)
+                )
+            }
         }
     }
 
