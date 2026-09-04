@@ -72,7 +72,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         NavigationDelegate(
           onPageStarted: (_) => setState(() => _loading = true),
           onPageFinished: (_) => setState(() => _loading = false),
-          onLoadError: (_, __, ___) => setState(() => _loading = false),
+          onWebResourceError: (_) => setState(() => _loading = false),
         ),
       );
 
