@@ -1,7 +1,6 @@
 package com.groovyrey.kumi
 
 import android.annotation.SuppressLint
-import android.os.Build
 import android.webkit.JsResult
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
@@ -12,6 +11,7 @@ import android.webkit.WebViewClient
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.platform.PlatformView
+import java.io.ByteArrayInputStream
 
 /**
  * A native Android WebView that blocks ad/tracker requests at the network
@@ -96,7 +96,11 @@ internal class AdBlockWebView(
 
             // Intercept known ad/tracker hosts with an empty response.
             if (isBlockedHost(host)) {
-                return WebResourceResponse("text/plain", "utf-8", "")
+                return WebResourceResponse(
+                    "text/plain",
+                    "utf-8",
+                    ByteArrayInputStream(ByteArray(0))
+                )
             }
             return null
         }
