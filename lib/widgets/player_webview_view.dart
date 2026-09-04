@@ -49,6 +49,10 @@ class _PlayerWebViewState extends State<PlayerWebView> {
 
   Future<dynamic> _onNativeEvent(MethodCall call) async {
     switch (call.method) {
+      case 'onReady':
+        widget.onDiagnostics?.call(
+            'page', 'READY view created${call.arguments != null ? ' url=${call.arguments}' : ''}');
+        break;
       case 'onPageStarted':
         widget.onLoadChanged(true);
         widget.onDiagnostics?.call('page', call.arguments?.toString() ?? '');

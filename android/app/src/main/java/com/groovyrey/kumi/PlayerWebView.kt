@@ -72,6 +72,10 @@ internal class PlayerWebView(
                 return true
             }
         }
+        // Tell the app the platform view was created and configured, so the
+        // diagnostics buffer can prove the WebView exists even if no navigation
+        // ever starts.
+        channel.invokeMethod("onReady", null)
     }
 
     private inner class SimpleClient : WebViewClient() {
@@ -148,6 +152,8 @@ internal class PlayerWebView(
     }
 
     fun loadInitialUrl(url: String) {
+        Log.i(TAG, "loadInitialUrl: $url")
+        channel.invokeMethod("onReady", url)
         webView.loadUrl(url)
     }
 
