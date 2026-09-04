@@ -60,13 +60,12 @@ class DetailScreen extends StatelessWidget {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        _iconLabel(
-                          Icons.star,
-                          item.rating.toStringAsFixed(1),
-                        ),
+                        _iconLabel(context, Icons.star,
+                            item.rating.toStringAsFixed(1)),
                         const SizedBox(width: 14),
                         if (item.releaseDate.isNotEmpty)
-                          _iconLabel(Icons.calendar_today, item.releaseDate),
+                          _iconLabel(
+                              context, Icons.calendar_today, item.releaseDate),
                       ],
                     ),
                     const SizedBox(height: 22),
@@ -121,7 +120,7 @@ class DetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _iconLabel(IconData icon, String text) {
+  Widget _iconLabel(BuildContext context, IconData icon, String text) {
     return Row(
       children: [
         Icon(icon, size: 16, color: context.appAccent),
@@ -172,7 +171,7 @@ class _PlayerButton extends StatelessWidget {
                 ),
               ),
             ),
-            const Icon(Icons.arrow_forward_ios,
+            Icon(Icons.arrow_forward_ios,
                 size: 16, color: context.appOnSurfaceVariant),
           ],
         ),
