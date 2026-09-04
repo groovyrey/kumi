@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../state/app_state.dart';
+import '../theme/app_theme.dart';
 
 class ThemeToggle extends StatelessWidget {
   const ThemeToggle({super.key});
@@ -9,21 +10,42 @@ class ThemeToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    final (icon, label) = switch (state.themeMode) {
-      ThemeMode.light => (Icons.light_mode, 'Light'),
-      ThemeMode.dark => (Icons.dark_mode, 'Dark'),
-      ThemeMode.system => (Icons.brightness_auto, 'System'),
+    final label = switch (state.themeMode) {
+      ThemeMode.light => 'Light',
+      ThemeMode.dark => 'Dark',
+      ThemeMode.system => 'System',
     };
 
     return Tooltip(
       message: 'Theme: $label',
-      child: IconButton(
-        onPressed: state.cycleTheme,
-        icon: Icon(icon, size: 22),
-        style: IconButton.styleFrom(
-          backgroundColor:
-              Theme.of(context).colorScheme.surface.withValues(alpha: 0.8),
-          foregroundColor: Theme.of(context).colorScheme.onSurface,
+      child: InkWell(
+        onTap: state.cycleTheme,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          decoration: BoxDecoration(
+            color: context.appSurface,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.cardBorder),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.contrast,
+                size: 15,
+                color: context.appOnSurfaceVariant,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: context.appTextTheme.bodyMedium?.copyWith(
+                  color: context.appOnSurface,
+                  letterSpacing: 0.4,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

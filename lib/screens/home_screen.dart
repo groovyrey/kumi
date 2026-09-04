@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
-import '../widgets/kumi_mark.dart';
 import '../widgets/theme_toggle.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -9,100 +8,62 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.local_florist,
-                        size: 22,
-                        color: colors.primary,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Kumi',
-                        style: context.appTextTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ],
+                  Text(
+                    'Kumi',
+                    style: context.appTextTheme.titleLarge?.copyWith(
+                      letterSpacing: -0.5,
+                    ),
                   ),
                   const ThemeToggle(),
                 ],
               ),
-              const SizedBox(height: 24),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(28),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      AppColors.gradientStart,
-                      AppColors.gradientMid,
-                      AppColors.gradientEnd,
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(28),
-                  boxShadow: [
-                    BoxShadow(
-                      color: colors.primary.withValues(alpha: 0.3),
-                      blurRadius: 24,
-                      offset: const Offset(0, 12),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const KumiMark(size: 64),
-                    const SizedBox(height: 26),
-                    Text(
-                      "Hello, I'm Kumi.",
-                      style: context.appTextTheme.displayMedium?.copyWith(
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'A fresh Flutter starter, built and shipped by GitHub Actions.',
-                      style: context.appTextTheme.bodyLarge?.copyWith(
-                        color: AppColors.gradientAccent,
-                      ),
-                    ),
-                  ],
+              const SizedBox(height: 36),
+              Text(
+                "Hello, I'm Kumi.",
+                style: context.appTextTheme.displayMedium?.copyWith(
+                  color: context.appOnSurface,
                 ),
               ),
-              const SizedBox(height: 30),
+              const SizedBox(height: 12),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 320),
+                child: Text(
+                  'A fresh Flutter starter, built and shipped by GitHub Actions.',
+                  style: context.appTextTheme.bodyLarge?.copyWith(
+                    color: context.appOnSurfaceVariant,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 44),
               Text(
                 'Get started',
                 style: context.appTextTheme.headlineMedium?.copyWith(
                   color: context.appOnSurface,
                 ),
               ),
-              const SizedBox(height: 16),
-              _FeatureTile(
-                icon: Icons.design_services,
+              const SizedBox(height: 18),
+              const _FeatureTile(
+                icon: Icons.brush_outlined,
                 title: 'Design a screen',
-                subtitle: 'Your screens live in lib/screens.',
+                subtitle: 'Screens live in lib/screens and render here.',
               ),
-              _FeatureTile(
-                icon: Icons.palette,
+              const _FeatureTile(
+                icon: Icons.contrast_outlined,
                 title: 'Tune the theme',
                 subtitle: 'Palette and type live in lib/theme.',
               ),
-              _FeatureTile(
-                icon: Icons.rocket_launch,
+              const _FeatureTile(
+                icon: Icons.rocket_launch_outlined,
                 title: 'Ship an APK',
                 subtitle: 'Push a v* tag and Actions attaches the release.',
               ),
@@ -127,28 +88,28 @@ class _FeatureTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           color: context.appSurface,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AppColors.cardBorder),
         ),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: 44,
-              height: 44,
+              width: 42,
+              height: 42,
               decoration: BoxDecoration(
-                color: colors.primaryContainer.withValues(alpha: 0.35),
-                borderRadius: BorderRadius.circular(12),
+                color: context.appAccentSoft,
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, size: 22, color: colors.primary),
+              child: Icon(icon, size: 21, color: context.appAccent),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -159,7 +120,7 @@ class _FeatureTile extends StatelessWidget {
                       color: context.appOnSurface,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 3),
                   Text(subtitle, style: context.appTextTheme.bodyMedium),
                 ],
               ),

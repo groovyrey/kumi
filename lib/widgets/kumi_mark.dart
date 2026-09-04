@@ -9,34 +9,21 @@ class KumiMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primary = Theme.of(context).colorScheme.primary;
     return Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.gradientStart,
-            AppColors.gradientMid,
-            AppColors.gradientEnd,
-          ],
-        ),
-        borderRadius: BorderRadius.circular(size * 0.28),
-        boxShadow: [
-          BoxShadow(
-            color: primary.withValues(alpha: 0.35),
-            blurRadius: size * 0.35,
-            offset: Offset(0, size * 0.16),
-          ),
-        ],
+        color: context.appSurface,
+        borderRadius: BorderRadius.circular(size * 0.16),
+        border: Border.all(color: AppColors.cardBorder),
       ),
-child: Center(
-        child: Icon(
-          Icons.local_florist,
-          size: size * 0.5,
-          color: AppColors.gradientAccent,
+      child: Center(
+        child: Text(
+          'K',
+          style: context.appTextTheme.displayMedium?.copyWith(
+            color: context.appAccent,
+            fontSize: size * 0.52,
+          ),
         ),
       ),
     );

@@ -5,26 +5,29 @@ class AppColors {
   AppColors._();
 
   // ── Light theme base values ───────────────────────────────────────
-  static const _lPrimary = Color(0xFF0F766E);
-  static const _lPrimaryDark = Color(0xFF115E59);
-  static const _lPrimaryLight = Color(0xFF2DD4BF);
-  static const _lSecondary = Color(0xFF0EA5E9);
-  static const _lSecondaryDark = Color(0xFF0284C7);
-  static const _lBackground = Color(0xFFF4F6F5);
+  // Warm monochrome + one muted pastel accent.
+  static const _lBackground = Color(0xFFF6F4EF); // warm bone
   static const _lSurface = Color(0xFFFFFFFF);
-  static const _lOnSurface = Color(0xFF11211E);
-  static const _lOnSurfaceVar = Color(0xFF5C6F6A);
-  static const _lOutline = Color(0xFFE0E7E5);
-  static const _lError = Color(0xFFEF4444);
-  static const _lWarning = Color(0xFFF59E0B);
-  static const _lSuccess = Color(0xFF10B981);
-  static const _lSurfaceVar = Color(0xFFE9F1EF);
-  static const _lCardBorder = Color(0xFFE2EAE8);
+  static const _lOnSurface = Color(0xFF2A2B2E); // off-black charcoal
+  static const _lOnSurfaceVar = Color(0xFF77767C); // muted gray
+  static const _lOutline = Color(0xFFE6E4DE); // ultra-light warm gray
+  static const _lCardBorder = Color(0xFFE6E4DE);
+  static const _lError = Color(0xFF9F2F2D);
+  static const _lAccent = Color(0xFF1F6C9F); // muted blue text/icon
+  static const _lAccentSoft = Color(0xFFE1F3FE); // pale blue
+  static const _lSurfaceVar = Color(0xFFF0EEE9);
 
-  static const gradientStart = Color(0xFF134E4A);
-  static const gradientMid = Color(0xFF0F766E);
-  static const gradientEnd = Color(0xFF14B8A6);
-  static const gradientAccent = Color(0xFF99F6E4);
+  // ── Dark theme base values ────────────────────────────────────────
+  static const _dBckground = Color(0xFF131214); // warm near-black
+  static const _dSurface = Color(0xFF1C1B1F);
+  static const _dOnSurface = Color(0xFFEDEBE6);
+  static const _dOnSurfaceVar = Color(0xFF9B998F);
+  static const _dOutline = Color(0xFF2C2B2F);
+  static const _dCardBorder = Color(0xFF2C2B2F);
+  static const _dError = Color(0xFFE58B89);
+  static const _dAccent = Color(0xFF85C1E9);
+  static const _dAccentSoft = Color(0xFF1B2A33);
+  static const _dSurfaceVar = Color(0xFF26252A);
 
   // ── Runtime brightness flag ────────────────────────────────────────
   static bool _isDark = false;
@@ -33,41 +36,16 @@ class AppColors {
       _isDark = b == Brightness.dark;
 
   // ── Theme-aware getters ────────────────────────────────────────────
-  static Color get primary => _isDark ? DarkColors.primary : _lPrimary;
-  static Color get primaryDark => _isDark ? DarkColors.primaryDark : _lPrimaryDark;
-  static Color get primaryLight => _isDark ? DarkColors.primaryLight : _lPrimaryLight;
-  static Color get secondary => _isDark ? DarkColors.secondary : _lSecondary;
-  static Color get secondaryDark => _isDark ? DarkColors.secondaryDark : _lSecondaryDark;
-  static Color get background => _isDark ? DarkColors.background : _lBackground;
-  static Color get surface => _isDark ? DarkColors.surface : _lSurface;
-  static Color get onSurface => _isDark ? DarkColors.onSurface : _lOnSurface;
-  static Color get onSurfaceVariant => _isDark ? DarkColors.onSurfaceVariant : _lOnSurfaceVar;
-  static Color get outline => _isDark ? DarkColors.outline : _lOutline;
-  static Color get error => _isDark ? DarkColors.error : _lError;
-  static Color get warning => _isDark ? DarkColors.warning : _lWarning;
-  static Color get success => _isDark ? DarkColors.success : _lSuccess;
-  static Color get surfaceVariant => _isDark ? DarkColors.surfaceVariant : _lSurfaceVar;
-  static Color get cardBorder => _isDark ? DarkColors.cardBorder : _lCardBorder;
-}
-
-class DarkColors {
-  DarkColors._();
-
-  static const primary = Color(0xFF5EEAD4);
-  static const primaryDark = Color(0xFF14B8A6);
-  static const primaryLight = Color(0xFF99F6E4);
-  static const secondary = Color(0xFF38BDF8);
-  static const secondaryDark = Color(0xFF0EA5E9);
-  static const background = Color(0xFF0A1413);
-  static const surface = Color(0xFF12201E);
-  static const onSurface = Color(0xFFE6F1EF);
-  static const onSurfaceVariant = Color(0xFF7D938E);
-  static const outline = Color(0xFF1E322F);
-  static const error = Color(0xFFF87171);
-  static const warning = Color(0xFFFBBF24);
-  static const success = Color(0xFF34D399);
-  static const surfaceVariant = Color(0xFF182A27);
-  static const cardBorder = Color(0xFF1E322F);
+  static Color get background => _isDark ? _dBckground : _lBackground;
+  static Color get surface => _isDark ? _dSurface : _lSurface;
+  static Color get onSurface => _isDark ? _dOnSurface : _lOnSurface;
+  static Color get onSurfaceVariant => _isDark ? _dOnSurfaceVar : _lOnSurfaceVar;
+  static Color get outline => _isDark ? _dOutline : _lOutline;
+  static Color get cardBorder => _isDark ? _dCardBorder : _lCardBorder;
+  static Color get error => _isDark ? _dError : _lError;
+  static Color get accent => _isDark ? _dAccent : _lAccent;
+  static Color get accentSoft => _isDark ? _dAccentSoft : _lAccentSoft;
+  static Color get surfaceVariant => _isDark ? _dSurfaceVar : _lSurfaceVar;
 }
 
 // ── Theme builders ──────────────────────────────────────────────────
@@ -77,23 +55,25 @@ ThemeData buildAppTheme() {
     useMaterial3: true,
     brightness: Brightness.light,
     colorScheme: ColorScheme.light(
-      primary: AppColors._lPrimary,
-      primaryContainer: AppColors._lPrimaryLight,
-      secondary: AppColors._lSecondary,
-      secondaryContainer: AppColors._lPrimaryLight,
+      primary: AppColors._lOnSurface,
+      onPrimary: AppColors._lSurface,
+      primaryContainer: AppColors._lSurfaceVar,
+      onPrimaryContainer: AppColors._lOnSurface,
+      secondary: AppColors._lAccent,
+      onSecondary: AppColors._lSurface,
+      secondaryContainer: AppColors._lAccentSoft,
+      onSecondaryContainer: AppColors._lAccent,
       surface: AppColors._lSurface,
       surfaceContainerHighest: AppColors._lSurfaceVar,
       error: AppColors._lError,
-      onPrimary: Colors.white,
       onSurface: AppColors._lOnSurface,
       onSurfaceVariant: AppColors._lOnSurfaceVar,
       outline: AppColors._lOutline,
-      onSecondary: Colors.white,
-      onError: Colors.white,
+      onError: AppColors._lSurface,
     ),
     scaffoldBackgroundColor: AppColors._lBackground,
     dividerColor: AppColors._lOutline,
-    splashFactory: InkSparkle.splashFactory,
+    splashFactory: InkRipple.splashFactory,
   );
 
   return base.copyWith(
@@ -106,23 +86,25 @@ ThemeData buildDarkTheme() {
     useMaterial3: true,
     brightness: Brightness.dark,
     colorScheme: ColorScheme.dark(
-      primary: DarkColors.primary,
-      primaryContainer: DarkColors.primaryDark,
-      secondary: DarkColors.secondary,
-      secondaryContainer: DarkColors.primaryDark,
-      surface: DarkColors.surface,
-      surfaceContainerHighest: DarkColors.surfaceVariant,
-      error: DarkColors.error,
-      onPrimary: const Color(0xFF062B26),
-      onSurface: DarkColors.onSurface,
-      onSurfaceVariant: DarkColors.onSurfaceVariant,
-      outline: DarkColors.outline,
-      onSecondary: const Color(0xFF082F49),
-      onError: const Color(0xFF450A0A),
+      primary: AppColors._dOnSurface,
+      onPrimary: AppColors._dSurface,
+      primaryContainer: AppColors._dSurfaceVar,
+      onPrimaryContainer: AppColors._dOnSurface,
+      secondary: AppColors._dAccent,
+      onSecondary: AppColors._dSurface,
+      secondaryContainer: AppColors._dAccentSoft,
+      onSecondaryContainer: AppColors._dAccent,
+      surface: AppColors._dSurface,
+      surfaceContainerHighest: AppColors._dSurfaceVar,
+      error: AppColors._dError,
+      onSurface: AppColors._dOnSurface,
+      onSurfaceVariant: AppColors._dOnSurfaceVar,
+      outline: AppColors._dOutline,
+      onError: AppColors._dSurface,
     ),
-    scaffoldBackgroundColor: DarkColors.background,
-    dividerColor: DarkColors.outline,
-    splashFactory: InkSparkle.splashFactory,
+    scaffoldBackgroundColor: AppColors._dBckground,
+    dividerColor: AppColors._dOutline,
+    splashFactory: InkRipple.splashFactory,
   );
 
   return base.copyWith(
@@ -131,33 +113,43 @@ ThemeData buildDarkTheme() {
 }
 
 TextTheme buildAppTextTheme(TextTheme base) {
-  return GoogleFonts.interTextTheme(base).copyWith(
-    displayLarge: base.displayLarge?.copyWith(
-      fontSize: 44,
-      fontWeight: FontWeight.w800,
-      letterSpacing: -1.5,
+  final serif = GoogleFonts.newsreaderTextTheme(base);
+  final sans = GoogleFonts.instrumentSansTextTheme(base);
+
+  return sans.copyWith(
+    displayLarge: serif.displayLarge?.copyWith(
+      fontSize: 46,
+      fontWeight: FontWeight.w500,
+      height: 1.05,
+      letterSpacing: -0.03,
     ),
-    displayMedium: base.displayMedium?.copyWith(
-      fontSize: 34,
-      fontWeight: FontWeight.w800,
-      letterSpacing: -1,
+    displayMedium: serif.displayMedium?.copyWith(
+      fontSize: 36,
+      fontWeight: FontWeight.w500,
+      height: 1.05,
+      letterSpacing: -0.03,
     ),
-    headlineMedium: base.headlineMedium?.copyWith(
+    headlineMedium: serif.headlineMedium?.copyWith(
       fontSize: 24,
-      fontWeight: FontWeight.w700,
-      letterSpacing: -0.5,
+      fontWeight: FontWeight.w600,
+      height: 1.15,
+      letterSpacing: -0.02,
     ),
-    titleLarge: base.titleLarge?.copyWith(
-      fontSize: 20,
-      fontWeight: FontWeight.w700,
+    titleLarge: sans.titleLarge?.copyWith(
+      fontSize: 19,
+      fontWeight: FontWeight.w600,
+      height: 1.2,
+      letterSpacing: -0.01,
     ),
-    bodyLarge: base.bodyLarge?.copyWith(
+    bodyLarge: sans.bodyLarge?.copyWith(
       fontSize: 16,
-      height: 1.5,
+      height: 1.65,
+      fontWeight: FontWeight.w400,
     ),
-    bodyMedium: base.bodyMedium?.copyWith(
+    bodyMedium: sans.bodyMedium?.copyWith(
       fontSize: 14,
-      height: 1.45,
+      height: 1.6,
+      fontWeight: FontWeight.w400,
       color: AppColors.onSurfaceVariant,
     ),
   );
@@ -169,7 +161,7 @@ extension AppThemeX on BuildContext {
   Color get appSurface => AppColors.surface;
   Color get appBackground => AppColors.background;
   Color get appOnSurface => AppColors.onSurface;
-  Color get appPrimary => AppColors.primary;
-  Color get appAccent => AppColors.gradientAccent;
+  Color get appAccent => AppColors.accent;
+  Color get appAccentSoft => AppColors.accentSoft;
   TextTheme get appTextTheme => Theme.of(this).textTheme;
 }
