@@ -27,9 +27,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    for (final e in _tabs.entries) {
-      _rowKeys[e.key] = e.value();
-    }
+    _rowKeys[_active] = _tabs[_active]!();
   }
 
   void _setActive(String key) {
