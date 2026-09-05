@@ -143,7 +143,7 @@ class EmbedAdGuard {
   /// Prevents top-level navigations that leave the player into ad/redirect
   /// targets; in-frame navigations are always allowed.
   static NavigationDecision guardNavigation(NavigationRequest request) {
-    if (!request.isForMainFrame) return NavigationDecision.navigate;
+    if (!request.isMainFrame) return NavigationDecision.navigate;
     final host = Uri.tryParse(request.url)?.host.toLowerCase();
     if (host == null || host.isEmpty) return NavigationDecision.navigate;
     final allowed = allowedNavHostSuffixes

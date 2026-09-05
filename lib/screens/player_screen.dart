@@ -67,7 +67,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
       params = const PlatformWebViewControllerCreationParams();
     }
 
-    final controller = WebViewController.fromPlatformCreationParams(params)
+    final controller = WebViewController.fromPlatformCreationParams(params);
+    controller
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(const Color(0xFF000000))
       ..setNavigationDelegate(
