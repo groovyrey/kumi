@@ -7,6 +7,7 @@ import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 
 import '../config.dart';
 import '../theme/app_theme.dart';
+import '../widgets/embed_ad_guard.dart';
 
 /// A Netflix-style immersive full-screen player. The default provider is
 /// autoplayed on entry; providers can be swapped while watching.
@@ -46,6 +47,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   @override
   void dispose() {
     _hideTimer?.cancel();
+    EmbedAdGuard.detach();
     super.dispose();
   }
 
@@ -70,9 +72,16 @@ class _PlayerScreenState extends State<PlayerScreen> {
       ..setBackgroundColor(const Color(0xFF000000))
       ..setNavigationDelegate(
         NavigationDelegate(
-          onPageStarted: (_) => setState(() => _loading = true),
-          onPageFinished: (_) => setState(() => _loading = false),
+          onPageStarted: (_) {
+            setState(() => _loading = true);
+            EmbedAdGuard.strip(controller);
+          },
+          onPageFinished: (_) {
+            setState(() => _loading = false);
+            EmbedAdGuard.strip(controller);
+          },
           onWebResourceError: (_) => setState(() => _loading = false),
+          onNavigationRequest: EmbedAdGuard.guardNavigation,
         ),
       );
 
@@ -83,6 +92,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     }
 
     controller.loadRequest(Uri.parse(url));
+    EmbedAdGuard.attach(controller);
     return controller;
   }
 
