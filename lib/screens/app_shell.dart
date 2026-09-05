@@ -24,6 +24,12 @@ class _AppShellState extends State<AppShell> {
   int _index = 0;
   final List<Widget?> _screens = List<Widget?>.filled(6, null);
 
+  @override
+  void initState() {
+    super.initState();
+    _screens[0] = const HomeScreen();
+  }
+
   static const _titles = <(IconData, IconData, String)>[
     (Icons.home_outlined, Icons.home_rounded, 'Home'),
     (Icons.explore_outlined, Icons.explore_rounded, 'Browse'),

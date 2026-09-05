@@ -61,8 +61,12 @@ class WatchHistory extends ChangeNotifier {
 
   Future<void> ensureLoaded() async {
     if (_loaded) return;
-    final prefs = await SharedPreferences.getInstance();
-    _entries = _decode(prefs.getString(_key) ?? '');
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _entries = _decode(prefs.getString(_key) ?? '');
+    } catch (_) {
+      _entries = [];
+    }
     _loaded = true;
     notifyListeners();
   }
@@ -92,16 +96,24 @@ class WatchHistory extends ChangeNotifier {
     await ensureLoaded();
     _entries.clear();
     notifyListeners();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_key);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_key);
+    } catch (_) {
+      // Best-effort persistence.
+    }
   }
 
   Future<void> _persist() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      _key,
-      jsonEncode([for (final e in _entries) e.toJson()]),
-    );
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        _key,
+        jsonEncode([for (final e in _entries) e.toJson()]),
+      );
+    } catch (_) {
+      // Best-effort persistence.
+    }
   }
 
   List<WatchEntry> _decode(String raw) {
