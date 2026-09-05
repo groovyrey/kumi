@@ -29,8 +29,6 @@ class KumiApp extends StatelessWidget {
           AppColors.setThemeBrightness(brightness);
           AppColors.setAccent(state.accent);
           SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
-            navigationBarColor: Colors.transparent,
-            navigationBarContrastEnforced: false,
             systemNavigationBarIconBrightness: brightness == Brightness.dark
                 ? Brightness.light
                 : Brightness.dark,

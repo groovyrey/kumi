@@ -4,7 +4,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/material_symbols_icons.dart';
 
-import '../config.dart';
 import '../models/genre.dart';
 import '../models/media_item.dart';
 import '../services/tmdb_service.dart';
