@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_theme.dart';
-
+/// The Kumi logo, rendered from the bundled `logo.png` asset. Used on the
+/// splash screen, the sidebar, and the About page.
 class KumiMark extends StatelessWidget {
   const KumiMark({super.key, this.size = 96});
 
@@ -9,23 +9,10 @@ class KumiMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       width: size,
       height: size,
-      decoration: BoxDecoration(
-        color: context.appSurface,
-        borderRadius: BorderRadius.circular(size * 0.16),
-        border: Border.all(color: AppColors.cardBorder),
-      ),
-      child: Center(
-        child: Text(
-          'K',
-          style: context.appTextTheme.displayMedium?.copyWith(
-            color: context.appAccent,
-            fontSize: size * 0.52,
-          ),
-        ),
-      ),
+      child: Image.asset('logo.png', fit: BoxFit.contain),
     );
   }
 }

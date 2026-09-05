@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../config.dart';
 import '../models/media_item.dart';
+import '../services/watch_history.dart';
 import '../theme/app_theme.dart';
 import 'player_screen.dart';
 
@@ -13,6 +14,7 @@ class DetailScreen extends StatelessWidget {
   String get _mediaParam => item.mediaType == 'tv' ? 'tvplay' : 'movie';
 
   void _play(BuildContext context) {
+    WatchHistory.instance.record(item);
     Navigator.push(
       context,
       MaterialPageRoute(

@@ -13,10 +13,7 @@ class AppColors {
   static const _lOutline = Color(0xFFE6E4DE); // ultra-light warm gray
   static const _lCardBorder = Color(0xFFE6E4DE);
   static const _lError = Color(0xFF9F2F2D);
-  static const _lAccent = Color(0xFF1F6C9F); // muted blue text/icon
-  static const _lAccentSoft = Color(0xFFE1F3FE); // pale blue
   static const _lSurfaceVar = Color(0xFFF0EEE9);
-  static const _lOnAccent = Color(0xFFFFFFFF);
 
   // ── Dark theme base values ────────────────────────────────────────
   static const _dBckground = Color(0xFF131214); // warm near-black
@@ -26,16 +23,16 @@ class AppColors {
   static const _dOutline = Color(0xFF2C2B2F);
   static const _dCardBorder = Color(0xFF2C2B2F);
   static const _dError = Color(0xFFE58B89);
-  static const _dAccent = Color(0xFF85C1E9);
-  static const _dAccentSoft = Color(0xFF1B2A33);
   static const _dSurfaceVar = Color(0xFF26252A);
-  static const _dOnAccent = Color(0xFF00141F);
 
-  // ── Runtime brightness flag ────────────────────────────────────────
+  // ── Runtime brightness + accent flags ─────────────────────────────
   static bool _isDark = false;
+  static AccentOption _accent = AccentOption.ocean;
 
   static void setThemeBrightness(Brightness b) =>
       _isDark = b == Brightness.dark;
+
+  static void setAccent(AccentOption option) => _accent = option;
 
   // ── Theme-aware getters ────────────────────────────────────────────
   static Color get background => _isDark ? _dBckground : _lBackground;
@@ -45,10 +42,114 @@ class AppColors {
   static Color get outline => _isDark ? _dOutline : _lOutline;
   static Color get cardBorder => _isDark ? _dCardBorder : _lCardBorder;
   static Color get error => _isDark ? _dError : _lError;
-  static Color get accent => _isDark ? _dAccent : _lAccent;
-  static Color get accentSoft => _isDark ? _dAccentSoft : _lAccentSoft;
   static Color get surfaceVariant => _isDark ? _dSurfaceVar : _lSurfaceVar;
-  static Color get onAccent => _isDark ? _dOnAccent : _lOnAccent;
+  static Color get accent => _palette.accent;
+  static Color get accentSoft => _palette.soft;
+  static Color get onAccent => _palette.onAccent;
+
+  static AppAccent get _palette => _isDark ? _accent.dark : _accent.light;
+}
+
+/// A coherent accent family for one theme mode: the accent itself, its soft
+/// tint for containers, and the foreground color that stays readable on it.
+class AppAccent {
+  const AppAccent({
+    required this.accent,
+    required this.soft,
+    required this.onAccent,
+  });
+
+  final Color accent;
+  final Color soft;
+  final Color onAccent;
+}
+
+/// User-selectable accent colors, each defined for light and dark mode.
+enum AccentOption {
+  ocean(
+    'Ocean',
+    light: AppAccent(
+      accent: Color(0xFF1F6C9F),
+      soft: Color(0xFFE1F3FE),
+      onAccent: Color(0xFFFFFFFF),
+    ),
+    dark: AppAccent(
+      accent: Color(0xFF85C1E9),
+      soft: Color(0xFF1B2A33),
+      onAccent: Color(0xFF00141F),
+    ),
+  ),
+  sage(
+    'Sage',
+    light: AppAccent(
+      accent: Color(0xFF4A7B62),
+      soft: Color(0xFFE3F0E6),
+      onAccent: Color(0xFFFFFFFF),
+    ),
+    dark: AppAccent(
+      accent: Color(0xFF9FC9AE),
+      soft: Color(0xFF202E28),
+      onAccent: Color(0xFF08150E),
+    ),
+  ),
+  amber(
+    'Amber',
+    light: AppAccent(
+      accent: Color(0xFF9A6A2F),
+      soft: Color(0xFFF6E9D7),
+      onAccent: Color(0xFFFFFFFF),
+    ),
+    dark: AppAccent(
+      accent: Color(0xFFE3B578),
+      soft: Color(0xFF33291C),
+      onAccent: Color(0xFF201503),
+    ),
+  ),
+  wine(
+    'Wine',
+    light: AppAccent(
+      accent: Color(0xFF8C2F39),
+      soft: Color(0xFFF6E0E3),
+      onAccent: Color(0xFFFFFFFF),
+    ),
+    dark: AppAccent(
+      accent: Color(0xFFE08A94),
+      soft: Color(0xFF331B1E),
+      onAccent: Color(0xFF20060A),
+    ),
+  ),
+  violet(
+    'Violet',
+    light: AppAccent(
+      accent: Color(0xFF5B5BA6),
+      soft: Color(0xFFE7E6F6),
+      onAccent: Color(0xFFFFFFFF),
+    ),
+    dark: AppAccent(
+      accent: Color(0xFFABAAE0),
+      soft: Color(0xFF23233A),
+      onAccent: Color(0xFF0E0E1F),
+    ),
+  ),
+  teal(
+    'Teal',
+    light: AppAccent(
+      accent: Color(0xFF1E7F78),
+      soft: Color(0xFFDEF0EC),
+      onAccent: Color(0xFFFFFFFF),
+    ),
+    dark: AppAccent(
+      accent: Color(0xFF7FC9C0),
+      soft: Color(0xFF16302C),
+      onAccent: Color(0xFF04221E),
+    ),
+  );
+
+  const AccentOption(this.label, {required this.light, required this.dark});
+
+  final String label;
+  final AppAccent light;
+  final AppAccent dark;
 }
 
 // ── Theme builders ──────────────────────────────────────────────────
@@ -62,10 +163,10 @@ ThemeData buildAppTheme() {
       onPrimary: AppColors._lSurface,
       primaryContainer: AppColors._lSurfaceVar,
       onPrimaryContainer: AppColors._lOnSurface,
-      secondary: AppColors._lAccent,
-      onSecondary: AppColors._lSurface,
-      secondaryContainer: AppColors._lAccentSoft,
-      onSecondaryContainer: AppColors._lAccent,
+      secondary: AppColors.accent,
+      onSecondary: AppColors.onAccent,
+      secondaryContainer: AppColors.accentSoft,
+      onSecondaryContainer: AppColors.accent,
       surface: AppColors._lSurface,
       surfaceContainerHighest: AppColors._lSurfaceVar,
       error: AppColors._lError,
@@ -93,10 +194,10 @@ ThemeData buildDarkTheme() {
       onPrimary: AppColors._dSurface,
       primaryContainer: AppColors._dSurfaceVar,
       onPrimaryContainer: AppColors._dOnSurface,
-      secondary: AppColors._dAccent,
-      onSecondary: AppColors._dSurface,
-      secondaryContainer: AppColors._dAccentSoft,
-      onSecondaryContainer: AppColors._dAccent,
+      secondary: AppColors.accent,
+      onSecondary: AppColors.onAccent,
+      secondaryContainer: AppColors.accentSoft,
+      onSecondaryContainer: AppColors.accent,
       surface: AppColors._dSurface,
       surfaceContainerHighest: AppColors._dSurfaceVar,
       error: AppColors._dError,

@@ -4,6 +4,24 @@ import 'package:http/http.dart' as http;
 
 import '../config.dart';
 import '../models/media_item.dart';
+import '../models/series_details.dart';
+
+/// A single TMDB page of results plus paging metadata for incremental loads.
+class MediaPage {
+  const MediaPage({
+    required this.items,
+    required this.page,
+    required this.totalPages,
+  });
+
+  final List<MediaItem> items;
+  final int page;
+  final int totalPages;
+
+  bool get hasMore => page < totalPages;
+
+  static const empty = MediaPage(items: [], page: 0, totalPages: 0);
+}
 
 class TmdbService {
   TmdbService({http.Client? client}) : _client = client ?? http.Client();
@@ -22,48 +40,101 @@ class TmdbService {
     );
   }
 
-  Future<List<MediaItem>> _fetchList(
+  Future<MediaPage> _fetchPage(
     String path,
     String mediaType, {
+    int page = 1,
     Map<String, String>? query,
   }) async {
-    final res = await _client.get(_uri(path, query: query));
+    final res = await _client.get(_uri(
+      path,
+      query: {
+        'page': '$page',
+        for (final e in (query ?? {}).entries) e.key: e.value,
+      },
+    ));
     if (res.statusCode != 200) {
       throw Exception('TMDB request failed: ${res.statusCode}');
     }
     final data = jsonDecode(res.body) as Map<String, dynamic>;
     final results = data['results'] as List? ?? const [];
-    return results
+    final items = results
         .map((e) => MediaItem.fromJson(e as Map<String, dynamic>, mediaType))
         .toList();
+    return MediaPage(
+      items: items,
+      page: data['page'] as int? ?? page,
+      totalPages: data['total_pages'] as int? ?? page,
+    );
   }
 
-  Future<List<MediaItem>> popularMovies() =>
-      _fetchList('/$_media/popular', _media);
+  Future<MediaPage> popularMoviesPage({int page = 1}) =>
+      _fetchPage('/$_media/popular', _media, page: page);
 
-  Future<List<MediaItem>> nowPlayingMovies() =>
-      _fetchList('/$_media/now_playing', _media);
+  Future<MediaPage> nowPlayingMoviesPage({int page = 1}) =>
+      _fetchPage('/$_media/now_playing', _media, page: page);
 
-  Future<List<MediaItem>> upcomingMovies() =>
-      _fetchList('/$_media/upcoming', _media);
+  Future<MediaPage> upcomingMoviesPage({int page = 1}) =>
+      _fetchPage('/$_media/upcoming', _media, page: page);
 
-  Future<List<MediaItem>> popularSeries() => _fetchList('/$_tv/popular', _tv);
+  Future<MediaPage> topRatedMoviesPage({int page = 1}) =>
+      _fetchPage('/$_media/top_rated', _media, page: page);
 
-  Future<List<MediaItem>> trendingSeries() =>
-      _fetchList('/$_tv/on_the_air', _tv);
+  Future<MediaPage> popularSeriesPage({int page = 1}) =>
+      _fetchPage('/$_tv/popular', _tv, page: page);
 
-  Future<List<MediaItem>> search(String query) async {
-    if (query.trim().isEmpty) return const [];
-    final movies = await _fetchList(
+  Future<MediaPage> onTheAirSeriesPage({int page = 1}) =>
+      _fetchPage('/$_tv/on_the_air', _tv, page: page);
+
+  /// Details for a series, including the next scheduled episode if any.
+  Future<SeriesDetails?> seriesDetails(int id) async {
+    final res = await _client.get(_uri('/$_tv/$id'));
+    if (res.statusCode != 200) return null;
+    final data = jsonDecode(res.body) as Map<String, dynamic>;
+    return SeriesDetails.fromJson(data);
+  }
+
+  Future<MediaPage> searchPage(String query, {int page = 1}) async {
+    if (query.trim().isEmpty) return MediaPage.empty;
+    final movies = await _fetchPage(
       '/search/$_media',
       _media,
-      query: {'query': query, 'page': '1'},
+      page: page,
+      query: {'query': query},
     );
-    final series = await _fetchList(
+    final series = await _fetchPage(
       '/search/$_tv',
       _tv,
-      query: {'query': query, 'page': '1'},
+      page: page,
+      query: {'query': query},
     );
-    return [...movies, ...series];
+    final total = movies.totalPages > series.totalPages
+        ? movies.totalPages
+        : series.totalPages;
+    return MediaPage(
+      items: [...movies.items, ...series.items],
+      page: page,
+      totalPages: total,
+    );
   }
+
+  // ── First-page shortcuts used by one-shot callers ────────────────────
+
+  Future<List<MediaItem>> popularMovies() async =>
+      (await popularMoviesPage()).items;
+
+  Future<List<MediaItem>> nowPlayingMovies() async =>
+      (await nowPlayingMoviesPage()).items;
+
+  Future<List<MediaItem>> upcomingMovies() async =>
+      (await upcomingMoviesPage()).items;
+
+  Future<List<MediaItem>> popularSeries() async =>
+      (await popularSeriesPage()).items;
+
+  Future<List<MediaItem>> trendingSeries() async =>
+      (await onTheAirSeriesPage()).items;
+
+  Future<List<MediaItem>> search(String query) async =>
+      (await searchPage(query)).items;
 }

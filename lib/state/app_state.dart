@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../theme/app_theme.dart';
+
 class AppState extends ChangeNotifier {
   static const _themeModeKey = 'theme_mode';
+  static const _accentKey = 'accent_color';
 
   ThemeMode _themeMode = ThemeMode.system;
+  AccentOption _accent = AccentOption.ocean;
 
   ThemeMode get themeMode => _themeMode;
+
+  AccentOption get accent => _accent;
 
   int get themeModeIndex => switch (themeMode) {
         ThemeMode.light => 0,
@@ -21,6 +27,10 @@ class AppState extends ChangeNotifier {
       'dark' => ThemeMode.dark,
       _ => ThemeMode.system,
     };
+    _accent = AccentOption.values.firstWhere(
+      (option) => option.name == prefs.getString(_accentKey),
+      orElse: () => AccentOption.ocean,
+    );
     notifyListeners();
   }
 
@@ -41,5 +51,12 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_themeModeKey, mode.name);
+  }
+
+  Future<void> setAccent(AccentOption option) async {
+    _accent = option;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_accentKey, option.name);
   }
 }

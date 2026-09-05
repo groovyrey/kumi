@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
@@ -36,12 +37,17 @@ class _PlayerScreenState extends State<PlayerScreen> {
   @override
   void initState() {
     super.initState();
+    // Immersive: hide the Android system bars while watching, so the embed
+    // player gets the whole screen and its controls (settings, share) are
+    // fully reachable.
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     _controller = _buildController(_url());
     _scheduleHide();
   }
 
   @override
   void dispose() {
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     _hideTimer?.cancel();
     EmbedAdGuard.detach();
     super.dispose();
@@ -105,36 +111,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
       _controlsVisible = !_controlsVisible;
       if (_controlsVisible) _scheduleHide();
     });
-  }
-
-  Future<void> _dumpDom() async {
-    final payload = await EmbedAdGuard.dumpStructure(_controller);
-    if (!mounted) return;
-    showDialog<void>(
-      context: context,
-      barrierDismissible: true,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.black,
-        title: const Text('Embed DOM dump',
-            style: TextStyle(color: Colors.white)),
-        content: SingleChildScrollView(
-          child: SelectableText(
-            payload ?? 'dump failed',
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 11,
-              fontFamily: 'monospace',
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -203,12 +179,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-            ),
-            IconButton(
-              tooltip: 'Dump DOM',
-              onPressed: _dumpDom,
-              icon: const Icon(Icons.bug_report,
-                  color: Colors.white, size: 22),
             ),
           ],
         ),

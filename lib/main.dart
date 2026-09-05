@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'screens/home_screen.dart';
+import 'screens/app_shell.dart';
 import 'state/app_state.dart';
 import 'theme/app_theme.dart';
 import 'widgets/kumi_mark.dart';
@@ -26,6 +26,7 @@ class KumiApp extends StatelessWidget {
                   ? Brightness.dark
                   : Brightness.light;
           AppColors.setThemeBrightness(brightness);
+          AppColors.setAccent(state.accent);
 
           return MaterialApp(
             title: 'Kumi',
@@ -69,7 +70,7 @@ class _SplashGateState extends State<SplashGate> {
       switchOutCurve: Curves.easeIn,
       child: _showSplash
           ? const SplashScreen(key: ValueKey('splash'))
-          : const HomeScreen(key: ValueKey('home')),
+          : const AppShell(key: ValueKey('shell')),
     );
   }
 }
