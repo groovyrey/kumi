@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/material_symbols_icons.dart';
 
 import '../services/screen_time.dart';
+import '../services/watch_history.dart';
 import '../theme/app_theme.dart';
 import '../widgets/kumi_mark.dart';
 import 'about_screen.dart';
@@ -43,6 +44,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     ScreenTime.instance.ensureLoaded();
     ScreenTime.instance.setActive(true);
     ScreenTime.instance.switchSection('Home');
+    WatchHistory.instance.ensureLoaded();
   }
 
   @override
@@ -85,19 +87,35 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         title: Row(
           children: [
             Padding(
-              padding: const EdgeInsets.only(
-                left: 8,
-                right: 4,
+              padding: const EdgeInsets.only(left: 8, right: 4),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          context.appAccent.withValues(alpha: 0.32),
+                          context.appAccent.withValues(alpha: 0.0),
+                        ],
+                        radius: 1.0,
+                      ),
+                    ),
+                  ),
+                  const KumiMark(size: 30),
+                ],
               ),
-              child: KumiMark(size: 24),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 8),
             Text(
               _items[_index].$2,
-              style: context.appTextTheme.titleMedium?.copyWith(
+              style: context.appTextTheme.titleLarge?.copyWith(
                 color: context.appOnSurface,
-                fontWeight: FontWeight.w600,
-                letterSpacing: -0.2,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.5,
               ),
             ),
           ],
@@ -139,16 +157,23 @@ class _FloatingNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(AppRadius.card),
+      borderRadius: BorderRadius.circular(999),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
         child: Container(
           decoration: BoxDecoration(
-            color: context.appSurface.withValues(alpha: 0.85),
-            borderRadius: BorderRadius.circular(AppRadius.card),
+            color: context.appSurface.withValues(alpha: 0.55),
+            borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: AppColors.cardBorder.withValues(alpha: 0.6),
+              color: context.appOnSurface.withValues(alpha: 0.12),
             ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.22),
+                blurRadius: 24,
+                offset: const Offset(0, 6),
+              ),
+            ],
           ),
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
           child: Row(
@@ -196,7 +221,7 @@ class _NavBarItem extends StatelessWidget {
           color: selected
               ? context.appAccentSoft.withValues(alpha: 0.8)
               : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,

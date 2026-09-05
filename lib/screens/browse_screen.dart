@@ -122,7 +122,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
 
   Widget _searchField(BuildContext context) {
     return SurfaceCard(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
       child: TextField(
         controller: _controller,
         onChanged: _onChanged,
@@ -136,10 +136,18 @@ class _BrowseScreenState extends State<BrowseScreen> {
           hintStyle: context.appTextTheme.bodyMedium?.copyWith(
             color: context.appOnSurfaceVariant,
           ),
-          prefixIcon: Icon(
-            Symbols.search_rounded,
-            size: 20,
-            color: context.appAccent,
+          prefixIconConstraints: const BoxConstraints(
+            minWidth: 26,
+            minHeight: 26,
+          ),
+          prefixIcon: SizedBox(
+            width: 26,
+            height: 26,
+            child: Icon(
+              Symbols.search_rounded,
+              size: 20,
+              color: context.appAccent,
+            ),
           ),
           suffixIcon: _query.isEmpty
               ? null
@@ -153,7 +161,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
                   ),
                 ),
           border: InputBorder.none,
-          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(vertical: 12),
         ),
       ),
     );

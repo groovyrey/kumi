@@ -113,8 +113,9 @@ class AppDropdownOption<T> {
 }
 
 /// A web-style select: a hairline field with an optional leading widget, a
-/// quiet hint when nothing is chosen, and a themed popup menu. Reusable for
-/// any single-choice preference or filter (categories, theme, accent, ...).
+/// quiet hint when nothing is chosen, and a bottom-sheet option list that
+/// highlights the current value. Reusable for any single-choice preference
+/// or filter (categories, theme, accent, ...).
 class AppDropdown<T> extends StatelessWidget {
   const AppDropdown({
     super.key,
@@ -138,82 +139,152 @@ class AppDropdown<T> extends StatelessWidget {
     return null;
   }
 
+  Future<void> _open(BuildContext context) async {
+    final picked = await showModalBottomSheet<T>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.4),
+      builder: (sheetContext) => _AppDropdownSheet<T>(
+        title: hint,
+        options: options,
+        value: value,
+      ),
+    );
+    if (picked != null) onChanged(picked);
+  }
+
   @override
   Widget build(BuildContext context) {
     final selected = _selected();
     final leading = fieldLeading ?? selected?.leading;
-    return Container(
-      width: double.infinity,
-      height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
-      decoration: BoxDecoration(
-        color: context.appSurface,
-        borderRadius: BorderRadius.circular(AppRadius.field),
-        border: Border.all(color: AppColors.cardBorder),
-      ),
-      child: Row(
-        children: [
-          if (leading != null) ...[
-            SizedBox(width: 26, height: 26, child: Center(child: leading)),
-            const SizedBox(width: 10),
-          ],
-          Expanded(
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<T>(
-                value: value,
-                isExpanded: true,
-                isDense: true,
-                borderRadius: BorderRadius.circular(AppRadius.card),
-                dropdownColor: context.appSurface,
-                icon: Icon(
-                  Symbols.expand_more_rounded,
-                  size: 20,
-                  color: context.appOnSurfaceVariant,
-                ),
-                hint: Text(
-                  hint,
-                  style: context.appTextTheme.bodyMedium?.copyWith(
-                    color: context.appOnSurfaceVariant,
-                  ),
-                ),
-                items: [
-                  for (final option in options)
-                    DropdownMenuItem<T>(
-                      value: option.value,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        child: Row(
-                          children: [
-                            if (option.leading != null) ...[
-                              SizedBox(
-                                width: 26,
-                                height: 26,
-                                child: Center(child: option.leading),
-                              ),
-                              const SizedBox(width: 10),
-                            ],
-                            Expanded(
-                              child: Text(
-                                option.label,
-                                style: context.appTextTheme.bodyMedium?.copyWith(
-                                  color: context.appOnSurface,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                ],
-                onChanged: onChanged,
+    final label = selected?.label;
+    return GestureDetector(
+      onTap: () => _open(context),
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        width: double.infinity,
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: context.appSurface,
+          borderRadius: BorderRadius.circular(AppRadius.field),
+          border: Border.all(color: AppColors.cardBorder),
+        ),
+        child: Row(
+          children: [
+            if (leading != null) ...[
+              SizedBox(width: 26, height: 26, child: Center(child: leading)),
+              const SizedBox(width: 10),
+            ],
+            Expanded(
+              child: Text(
+                label ?? hint,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: context.appTextTheme.bodyMedium?.copyWith(
-                  color: context.appOnSurface,
-                  fontWeight: FontWeight.w600,
+                  color: label != null
+                      ? context.appOnSurface
+                      : context.appOnSurfaceVariant,
+                  fontWeight: label != null
+                      ? FontWeight.w600
+                      : FontWeight.w400,
                 ),
               ),
             ),
-          ),
-        ],
+            const SizedBox(width: 8),
+            Icon(
+              Symbols.expand_more_rounded,
+              size: 20,
+              color: context.appOnSurfaceVariant,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AppDropdownSheet<T> extends StatelessWidget {
+  const _AppDropdownSheet({
+    required this.title,
+    required this.options,
+    required this.value,
+  });
+
+  final String title;
+  final List<AppDropdownOption<T>> options;
+  final T? value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: context.appSurface,
+      borderRadius: const BorderRadius.vertical(
+        top: Radius.circular(AppRadius.card),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 6),
+              child: Text(
+                title.toUpperCase(),
+                style: context.appTextTheme.labelSmall?.copyWith(
+                  color: context.appAccent,
+                ),
+              ),
+            ),
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
+                children: [
+                  for (final option in options) _tile(context, option),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _tile(BuildContext context, AppDropdownOption<T> option) {
+    final selected = option.value == value;
+    return InkWell(
+      onTap: () => Navigator.pop(context, option.value),
+      borderRadius: BorderRadius.circular(AppRadius.control),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          color: selected ? context.appAccentSoft : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppRadius.control),
+        ),
+        child: Row(
+          children: [
+            if (option.leading != null) ...[
+              SizedBox(width: 26, height: 26, child: Center(child: option.leading)),
+              const SizedBox(width: 10),
+            ],
+            Expanded(
+              child: Text(
+                option.label,
+                style: context.appTextTheme.bodyMedium?.copyWith(
+                  color: selected
+                      ? context.appAccent
+                      : context.appOnSurface,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                ),
+              ),
+            ),
+            if (selected)
+              Icon(Symbols.check_rounded, size: 18, color: context.appAccent),
+          ],
+        ),
       ),
     );
   }
