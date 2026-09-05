@@ -185,7 +185,7 @@ Widget _continueWatchingSection(BuildContext context) {
                 tooltip: 'Browse all',
                 onPressed: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const BrowseScreen()),
+                  MaterialPageRoute(builder: (_) => BrowseScreen()),
                 ),
                 icon: const Icon(Icons.grid_view_rounded, size: 22),
               ),
@@ -233,12 +233,12 @@ class _ContinueCard extends StatelessWidget {
   const _ContinueCard({
     required this.entry,
     required this.onTap,
-    this.width = 120,
   });
+
+  static const width = 120.0;
 
   final WatchEntry entry;
   final VoidCallback onTap;
-  final double width;
 
   @override
   Widget build(BuildContext context) {

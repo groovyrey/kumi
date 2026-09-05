@@ -50,7 +50,7 @@ class BrowseScreen extends StatelessWidget {
   void _seeAll(BuildContext context, _Section section) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => CategoryScreen(section: section)),
+      MaterialPageRoute(builder: (_) => _CategoryScreen(section: section)),
     );
   }
 
@@ -129,8 +129,8 @@ class BrowseScreen extends StatelessWidget {
 }
 
 /// Full lazy grid for a single category, reachable from a Browse "See all".
-class CategoryScreen extends StatelessWidget {
-  const CategoryScreen({super.key, required this.section});
+class _CategoryScreen extends StatelessWidget {
+  const _CategoryScreen({super.key, required this.section});
 
   final _Section section;
 

@@ -37,7 +37,7 @@ class _AppShellState extends State<AppShell> {
     if (_screens[index] == null) {
       _screens[index] = switch (index) {
         0 => const HomeScreen(),
-        1 => const BrowseScreen(),
+        1 => BrowseScreen(),
         2 => const SearchScreen(),
         3 => const ScheduleScreen(),
         4 => const SettingsScreen(),
