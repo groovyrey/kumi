@@ -130,7 +130,7 @@ class BrowseScreen extends StatelessWidget {
 
 /// Full lazy grid for a single category, reachable from a Browse "See all".
 class _CategoryScreen extends StatelessWidget {
-  const _CategoryScreen({super.key, required this.section});
+  const _CategoryScreen({required this.section});
 
   final _Section section;
 
