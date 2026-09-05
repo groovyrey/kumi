@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'screens/app_shell.dart';
@@ -27,6 +28,17 @@ class KumiApp extends StatelessWidget {
                   : Brightness.light;
           AppColors.setThemeBrightness(brightness);
           AppColors.setAccent(state.accent);
+          SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
+            navigationBarColor: Colors.transparent,
+            navigationBarContrastEnforced: false,
+            systemNavigationBarIconBrightness: brightness == Brightness.dark
+                ? Brightness.light
+                : Brightness.dark,
+            statusBarIconBrightness: brightness == Brightness.dark
+                ? Brightness.light
+                : Brightness.dark,
+            statusBarBrightness: brightness,
+          ));
 
           return MaterialApp(
             title: 'Kumi',

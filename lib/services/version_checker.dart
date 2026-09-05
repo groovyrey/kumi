@@ -26,10 +26,11 @@ class VersionChecker {
 
   static const _tagUrl =
       'https://api.github.com/repos/groovyrey/kumi/releases/latest';
+  static const _releasesUrl = 'https://github.com/groovyrey/kumi/releases/latest';
   static const _cacheWindow = Duration(hours: 24);
   static const _cachedVersionKey = 'cached_latest_version';
+  static const _cachedUrlKey = 'cached_latest_url';
   static const _cachedCheckKey = 'last_version_check';
-  static const _cachedInstalledKey = 'cached_checked_installed';
 
   /// Returns a newer release than the installed app, or null when Kumi is up
   /// to date (or the check can't be made).
@@ -38,19 +39,20 @@ class VersionChecker {
     final installed = await _installedVersion();
 
     try {
-      final cached = prefs.getString(_cachedVersionKey);
-      final cachedInstalled = prefs.getString(_cachedInstalledKey);
+      final cachedVersion = prefs.getString(_cachedVersionKey) ?? '';
+      final cachedUrl = prefs.getString(_cachedUrlKey) ?? _releasesUrl;
       final lastCheck = prefs.getInt(_cachedCheckKey) ?? 0;
       final withinWindow =
           DateTime.now().millisecondsSinceEpoch - lastCheck <
               _cacheWindow.inMilliseconds;
 
-      if (cached != null &&
-          cachedInstalled == installed &&
-          withinWindow &&
-          !_isNewer(cached, installed)) {
-        return null;
+      // A newer release already announced is trusted from cache — no API call
+      // needed, so the banner survives offline launches and rate limits.
+      if (_isNewer(cachedVersion, installed)) {
+        return VersionInfo(version: cachedVersion, url: cachedUrl);
       }
+      // Fresh check, no pending upgrade: stay quiet inside the cache window.
+      if (withinWindow) return null;
 
       final res = await _client
           .get(Uri.parse(_tagUrl), headers: const {'User-Agent': 'kumi'})
@@ -60,13 +62,13 @@ class VersionChecker {
       final data = jsonDecode(res.body) as Map<String, dynamic>;
       final tag = (data['tag_name'] as String?) ?? '';
       final version = tag.startsWith('v') ? tag.substring(1) : tag;
-      final url = data['html_url'] as String? ?? '';
-      if (version.isEmpty || url.isEmpty) return null;
+      final url = data['html_url'] as String? ?? _releasesUrl;
+      if (version.isEmpty) return null;
 
       await prefs.setInt(
           _cachedCheckKey, DateTime.now().millisecondsSinceEpoch);
       await prefs.setString(_cachedVersionKey, version);
-      await prefs.setString(_cachedInstalledKey, installed);
+      await prefs.setString(_cachedUrlKey, url);
 
       if (!_isNewer(version, installed)) return null;
       return VersionInfo(version: version, url: url);

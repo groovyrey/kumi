@@ -131,8 +131,9 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
           ],
         ),
       ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        minimum: const EdgeInsets.fromLTRB(16, 8, 16, 16),
         child: _FloatingNavBar(
           items: _items,
           selectedIndex: _index,
@@ -221,7 +222,7 @@ class _NavBarItem extends StatelessWidget {
           color: selected
               ? context.appAccentSoft.withValues(alpha: 0.8)
               : Colors.transparent,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(999),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,

@@ -1,14 +1,18 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/material_symbols_icons.dart';
 
+import '../config.dart';
 import '../models/genre.dart';
+import '../models/media_item.dart';
 import '../services/tmdb_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/lazy_media_grid.dart';
 import '../widgets/poster_rail.dart';
 import '../widgets/web_controls.dart';
+import 'detail_screen.dart';
 
 class _Section {
   const _Section(this.title, this.fetch);
@@ -37,6 +41,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
   String _query = '';
   List<Genre> _genres = [];
   int _genreId = -1;
+  MediaItem? _featured;
 
   static const _allCategories = -1;
 
@@ -44,6 +49,19 @@ class _BrowseScreenState extends State<BrowseScreen> {
   void initState() {
     super.initState();
     _loadGenres();
+    _loadFeatured();
+  }
+
+  Future<void> _loadFeatured() async {
+    try {
+      final page = await _tmdb.nowPlayingMoviesPage();
+      if (!mounted || page.items.isEmpty) return;
+      setState(() {
+        _featured = page.items[Random().nextInt(page.items.length)];
+      });
+    } catch (_) {
+      // Quiet: the rail still works without a featured pick.
+    }
   }
 
   Future<void> _loadGenres() async {
@@ -122,7 +140,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
 
   Widget _searchField(BuildContext context) {
     return SurfaceCard(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
       child: TextField(
         controller: _controller,
         onChanged: _onChanged,
@@ -153,6 +171,11 @@ class _BrowseScreenState extends State<BrowseScreen> {
               ? null
               : IconButton(
                   tooltip: 'Clear search',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints.tightFor(
+                    width: 36,
+                    height: 44,
+                  ),
                   onPressed: _clearSearch,
                   icon: Icon(
                     Symbols.close_rounded,
@@ -161,7 +184,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
                   ),
                 ),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(vertical: 12),
+          contentPadding: const EdgeInsets.symmetric(vertical: 10),
         ),
       ),
     );
@@ -277,12 +300,138 @@ class _BrowseScreenState extends State<BrowseScreen> {
               ),
             ),
           ),
+          if (_featured != null && section.title == 'Now Playing')
+            SliverToBoxAdapter(child: _featuredCard(context, _featured!)),
           SliverToBoxAdapter(
             child: SizedBox(height: 250, child: PosterRail(fetch: section.fetch)),
           ),
         ],
         const SliverToBoxAdapter(child: SizedBox(height: 16)),
       ],
+    );
+  }
+
+  Widget _featuredCard(BuildContext context, MediaItem item) {
+    final poster = item.posterUrl;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 2, 20, 12),
+      child: InkWell(
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => DetailScreen(item: item)),
+        ),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        child: Ink(
+          width: double.infinity,
+          height: 190,
+          decoration: BoxDecoration(
+            color: context.appSurface,
+            borderRadius: BorderRadius.circular(AppRadius.card),
+            border: Border.all(color: AppColors.cardBorder),
+          ),
+          child: Row(
+            children: [
+              if (poster.isNotEmpty)
+                ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(AppRadius.card - 1),
+                    bottomLeft: Radius.circular(AppRadius.card - 1),
+                  ),
+                  child: Image.network(
+                    poster,
+                    width: 124,
+                    height: 190,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _featuredFallback(context),
+                  ),
+                )
+              else
+                _featuredFallback(context),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(0, 14, 14, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'NOW PLAYING',
+                        style: context.appTextTheme.labelSmall?.copyWith(
+                          color: context.appAccent,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.6,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        item.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.appTextTheme.titleMedium?.copyWith(
+                          color: context.appOnSurface,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        item.overview,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.appTextTheme.bodySmall,
+                      ),
+                      const Spacer(),
+                      Row(
+                        children: [
+                          Icon(
+                            Symbols.star_rounded,
+                            size: 16,
+                            color: context.appAccent,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            item.rating.toStringAsFixed(1),
+                            style: context.appTextTheme.bodyMedium?.copyWith(
+                              color: context.appOnSurface,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Icon(
+                            Symbols.play_circle_rounded,
+                            size: 16,
+                            color: context.appAccent,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Watch',
+                            style: context.appTextTheme.bodyMedium?.copyWith(
+                              color: context.appAccent,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _featuredFallback(BuildContext context) {
+    return Container(
+      width: 124,
+      height: 190,
+      color: context.appSurfaceVariant,
+      child: Icon(
+        Symbols.movie_rounded,
+        size: 40,
+        color: context.appOnSurfaceVariant,
+      ),
     );
   }
 
@@ -317,12 +466,19 @@ class _BrowseScreenState extends State<BrowseScreen> {
           ),
         ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
-          child: _searchField(context),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
-          child: _categoryDropdown(context),
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
+          child: SizedBox(
+            height: 48,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              clipBehavior: Clip.none,
+              children: [
+                SizedBox(width: 230, child: _searchField(context)),
+                const SizedBox(width: 8),
+                SizedBox(width: 170, child: _categoryDropdown(context)),
+              ],
+            ),
+          ),
         ),
         Expanded(
           child: searching
