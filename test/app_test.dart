@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:kumi/main.dart';
 import 'package:kumi/screens/home_screen.dart';
+import 'package:kumi/widgets/kumi_mark.dart';
 
 void main() {
   setUp(() {
@@ -30,7 +31,7 @@ void main() {
   testWidgets('home renders the personal dashboard shell', (tester) async {
     await boot(tester);
 
-    expect(find.text('Kumi'), findsWidgets);
+    expect(find.byType(KumiMark), findsWidgets);
     expect(find.text('Home'), findsWidgets);
     expect(find.text('Browse'), findsWidgets);
     expect(find.text('Screen time'), findsOneWidget);
