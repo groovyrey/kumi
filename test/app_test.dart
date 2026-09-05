@@ -32,6 +32,7 @@ void main() {
     expect(find.text('Kumi'), findsWidgets);
     expect(find.text('Movies'), findsOneWidget);
     expect(find.text('Series'), findsOneWidget);
-    expect(find.byIcon(Icons.search), findsOneWidget);
+    expect(find.byType(NavigationRail), findsOneWidget);
+    expect(find.byIcon(Icons.search_outlined), findsWidgets);
   });
 }
