@@ -104,6 +104,19 @@ class WatchHistory extends ChangeNotifier {
     }
   }
 
+  Future<void> remove(WatchEntry entry) async {
+    await ensureLoaded();
+    final before = _entries.length;
+    _entries.removeWhere(
+      (e) =>
+          e.item.id == entry.item.id &&
+          e.item.mediaType == entry.item.mediaType,
+    );
+    if (_entries.length == before) return;
+    notifyListeners();
+    await _persist();
+  }
+
   Future<void> _persist() async {
     try {
       final prefs = await SharedPreferences.getInstance();

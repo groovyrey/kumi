@@ -1,7 +1,7 @@
 name: kumi
 description: "Kumi - a fresh Flutter starter app."
 publish_to: 'none'
-version: 1.4.1+6
+version: 1.4.2+7
 
 environment:
   sdk: ^3.8.1
@@ -19,6 +19,7 @@ dependencies:
   webview_flutter_wkwebview: ^3.25.1
   url_launcher: ^6.3.1
   package_info_plus: ^10.2.1
+  material_symbols_icons: ^4.2960.0
 
 dev_dependencies:
   flutter_test:

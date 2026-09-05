@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/material_symbols_icons.dart';
 
 import '../models/media_item.dart';
 import '../screens/detail_screen.dart';
@@ -118,7 +119,7 @@ class _PosterRailState extends State<PosterRail> {
       child = IconButton(
         tooltip: 'Retry',
         onPressed: _loadMore,
-        icon: Icon(Icons.refresh,
+        icon: Icon(Symbols.refresh_rounded,
             size: 22, color: Theme.of(context).colorScheme.onSurfaceVariant),
       );
     } else if (_items.isEmpty) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/material_symbols_icons.dart';
 
 import '../models/media_item.dart';
 import '../models/series_details.dart';
@@ -10,6 +11,9 @@ import 'detail_screen.dart';
 /// the TMDB upcoming list and the next scheduled episode of on-air series
 /// (via `next_episode_to_air`). TMDB reports the broadcast schedule — it does
 /// not predict dates that networks have not announced yet.
+///
+/// Sections reveal 5 items at a time: a Load more button appends the next 5,
+/// fetching the next page only when the loaded buffer runs out.
 class ScheduleScreen extends StatefulWidget {
   const ScheduleScreen({super.key});
 
@@ -32,6 +36,7 @@ class _ScheduleRow {
 }
 
 class _ScheduleScreenState extends State<ScheduleScreen> {
+  static const _pageStep = 5;
   static const _months = [
     'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
@@ -41,12 +46,14 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   final _tmdb = TmdbService();
 
   final List<MediaItem> _movies = [];
+  int _showingMovies = _pageStep;
   int _moviePage = 0;
   bool _movieHasMore = true;
   bool _loadingMovies = false;
   bool _movieFailed = false;
 
   final List<_ScheduleRow> _episodes = [];
+  int _showingEpisodes = _pageStep;
   bool _loadingEpisodes = true;
   bool _episodesFailed = false;
 
@@ -88,6 +95,13 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         _loadingMovies = false;
         _movieFailed = true;
       });
+    }
+  }
+
+  Future<void> _loadMoreMoviesPressed() async {
+    setState(() => _showingMovies += _pageStep);
+    if (_movies.length < _showingMovies && _movieHasMore) {
+      await _loadMoreMovies();
     }
   }
 
@@ -136,91 +150,82 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return NotificationListener<ScrollNotification>(
-      onNotification: (notification) {
-        if (notification.metrics.axis == Axis.vertical &&
-            notification.metrics.pixels >=
-                notification.metrics.maxScrollExtent - 600) {
-          _loadMoreMovies();
-        }
-        return false;
-      },
-      child: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 30),
-          children: [
-            Text(
-              'Schedule',
-              style: context.appTextTheme.titleLarge?.copyWith(
-                letterSpacing: -0.5,
-              ),
+    final shownMovies = _movies.take(_showingMovies).toList();
+    final shownEpisodes = _episodes.take(_showingEpisodes).toList();
+    return SafeArea(
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 30),
+        children: [
+          Text(
+            'Schedule',
+            style: context.appTextTheme.titleLarge?.copyWith(
+              letterSpacing: -0.5,
             ),
-            const SizedBox(height: 20),
-            _sectionLabel(context, 'Upcoming movie releases'),
-            if (_movies.isEmpty && !_loadingMovies && !_movieFailed)
-              _emptyMessage(context, 'No upcoming releases found.')
-            else
-              for (var i = 0; i < _movies.length; i++) ...[
-                _rowTile(
-                  context,
-                  _ScheduleRow(
-                    item: _movies[i],
-                    date: _movies[i].releaseDate,
-                    label: 'Movie',
-                    extra: '',
-                  ),
+          ),
+          const SizedBox(height: 20),
+          _sectionLabel(context, 'Upcoming movie releases'),
+          if (shownMovies.isEmpty && !_loadingMovies && !_movieFailed)
+            _emptyMessage(context, 'No upcoming releases found.')
+          else
+            for (var i = 0; i < shownMovies.length; i++) ...[
+              _rowTile(
+                context,
+                _ScheduleRow(
+                  item: shownMovies[i],
+                  date: shownMovies[i].releaseDate,
+                  label: 'Movie',
+                  extra: '',
                 ),
-                if (i < _movies.length - 1)
-                  Divider(height: 1, color: AppColors.cardBorder),
-              ],
-            _movieFooter(context),
-            const SizedBox(height: 26),
-            _sectionLabel(context, 'Next series episodes'),
-            if (_loadingEpisodes)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 22),
-                child: Center(
-                  child: SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
+              ),
+              if (i < shownMovies.length - 1)
+                Divider(height: 1, color: AppColors.cardBorder),
+            ],
+          _movieFooter(context),
+          const SizedBox(height: 26),
+          _sectionLabel(context, 'Next series episodes'),
+          if (_loadingEpisodes)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 22),
+              child: Center(
+                child: SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(strokeWidth: 2),
                 ),
-              )
-            else if (_episodesFailed)
-              Center(
-                child: TextButton(
-                  onPressed: _loadEpisodes,
-                  child: Text('Could not load next episodes · Tap to retry'),
-                ),
-              )
-            else if (_episodes.isEmpty)
-              _emptyMessage(context, 'No episodes scheduled yet.')
-            else
-              for (var i = 0; i < _episodes.length; i++) ...[
-                _rowTile(context, _episodes[i]),
-                if (i < _episodes.length - 1)
-                  Divider(height: 1, color: AppColors.cardBorder),
-              ],
-            const SizedBox(height: 8),
+              ),
+            )
+          else if (_episodesFailed)
+            Center(
+              child: TextButton(
+                onPressed: _loadEpisodes,
+                child: Text('Could not load next episodes · Tap to retry'),
+              ),
+            )
+          else if (shownEpisodes.isEmpty)
+            _emptyMessage(context, 'No episodes scheduled yet.')
+          else ...[
+            for (var i = 0; i < shownEpisodes.length; i++) ...[
+              _rowTile(context, shownEpisodes[i]),
+              if (i < shownEpisodes.length - 1)
+                Divider(height: 1, color: AppColors.cardBorder),
+            ],
+            if (_episodes.length > _showingEpisodes)
+              _loadButton(
+                context,
+                label: 'Load more episodes',
+                onPressed: () =>
+                    setState(() => _showingEpisodes += _pageStep),
+              ),
           ],
-        ),
+          const SizedBox(height: 8),
+        ],
       ),
     );
   }
 
   Widget _movieFooter(BuildContext context) {
     if (_loadingMovies) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 14),
-        child: Center(
-          child: SizedBox(
-            width: 18,
-            height: 18,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        ),
-      );
+      return _loadButton(context, label: 'Load more', onPressed: null);
     }
     if (_movieFailed) {
       return Center(
@@ -230,7 +235,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         ),
       );
     }
-    if (!_movieHasMore && _movies.isNotEmpty) {
+    if (_movies.isNotEmpty &&
+        !_movieHasMore &&
+        _showingMovies >= _movies.length) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 10),
         child: Center(
@@ -241,10 +248,67 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         ),
       );
     }
-    if (_movies.isEmpty) {
+    if (_movies.isEmpty || !(_movies.length > _showingMovies || _movieHasMore)) {
       return const SizedBox(height: 4);
     }
-    return const SizedBox(height: 4);
+    return _loadButton(
+      context,
+      label: 'Load more movies',
+      onPressed: _loadMoreMoviesPressed,
+    );
+  }
+
+  Widget _loadButton(
+    BuildContext context, {
+    required String label,
+    required VoidCallback? onPressed,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: SizedBox(
+        width: double.infinity,
+        height: 44,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(AppRadius.control),
+          child: Container(
+            decoration: BoxDecoration(
+              color: context.appAccentSoft,
+              borderRadius: BorderRadius.circular(AppRadius.control),
+              border: Border.all(
+                color: context.appAccent.withValues(alpha: 0.4),
+              ),
+            ),
+            child: Center(
+              child: onPressed == null
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Symbols.add_rounded,
+                          size: 18,
+                          color: context.appAccent,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          label,
+                          style: context.appTextTheme.bodyMedium?.copyWith(
+                            color: context.appAccent,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _rowTile(BuildContext context, _ScheduleRow row) {
@@ -269,7 +333,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               clipBehavior: Clip.antiAlias,
               child: row.item.posterUrl.isEmpty
                   ? Icon(
-                      Icons.local_movies_outlined,
+                      Symbols.local_movies_rounded,
                       size: 18,
                       color: context.appOnSurfaceVariant,
                     )
@@ -277,7 +341,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       row.item.posterUrl,
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => Icon(
-                        Icons.local_movies_outlined,
+                        Symbols.local_movies_rounded,
                         size: 18,
                         color: context.appOnSurfaceVariant,
                       ),
@@ -341,12 +405,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   Widget _sectionLabel(BuildContext context, String label) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 10),
       child: Text(
-        label,
-        style: context.appTextTheme.titleMedium?.copyWith(
-          color: context.appOnSurface,
-          fontWeight: FontWeight.w600,
+        label.toUpperCase(),
+        style: context.appTextTheme.labelSmall?.copyWith(
+          color: context.appAccent,
         ),
       ),
     );

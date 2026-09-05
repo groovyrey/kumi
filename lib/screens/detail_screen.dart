@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/material_symbols_icons.dart';
 
 import '../config.dart';
 import '../models/media_item.dart';
@@ -12,6 +13,17 @@ class DetailScreen extends StatelessWidget {
   final MediaItem item;
 
   String get _mediaParam => item.mediaType == 'tv' ? 'tvplay' : 'movie';
+
+  /// True for movies whose release date is still in the future — nothing is
+  /// playable until then, so the play and source buttons are replaced by an
+  /// "in theaters" card.
+  bool get _isUpcoming {
+    if (item.mediaType != 'movie') return false;
+    final date = DateTime.tryParse(item.releaseDate);
+    if (date == null) return false;
+    final now = DateTime.now();
+    return date.isAfter(DateTime(now.year, now.month, now.day));
+  }
 
   void _play(BuildContext context) {
     WatchHistory.instance.record(item);
@@ -77,7 +89,7 @@ class DetailScreen extends StatelessWidget {
                         backgroundColor:
                             context.appSurface.withValues(alpha: 0.9),
                       ),
-                      icon: const Icon(Icons.arrow_back),
+                      icon: const Icon(Symbols.arrow_back_rounded),
                     ),
                   ),
                 ],
@@ -96,16 +108,19 @@ class DetailScreen extends StatelessWidget {
                     const SizedBox(height: 10),
                     Row(
                       children: [
-                        _iconLabel(context, Icons.star,
+                        _iconLabel(context, Symbols.star_rounded,
                             item.rating.toStringAsFixed(1)),
                         const SizedBox(width: 14),
                         if (item.releaseDate.isNotEmpty)
                           _iconLabel(
-                              context, Icons.calendar_today, item.releaseDate),
+                              context, Symbols.event_rounded, item.releaseDate),
                       ],
                     ),
                     const SizedBox(height: 20),
-                    _playButton(context),
+                    if (_isUpcoming)
+                      _comingSoonCard(context, item.releaseDate)
+                    else
+                      _playButton(context),
                     const SizedBox(height: 24),
                     Text(
                       'Overview',
@@ -123,19 +138,34 @@ class DetailScreen extends StatelessWidget {
                         height: 1.5,
                       ),
                     ),
-                    const SizedBox(height: 26),
-                    Text(
-                      'Watch on CineSrc',
-                      style: context.appTextTheme.headlineSmall?.copyWith(
-                        color: context.appOnSurface,
+                    if (item.mediaType == 'movie' && _isUpcoming) ...[
+                      const SizedBox(height: 26),
+                      Text(
+                        'Watch on CineSrc',
+                        style: context.appTextTheme.headlineSmall?.copyWith(
+                          color: context.appOnSurface,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    _SourceButton(
-                      label: 'CineSrc',
-                      defaultSource: true,
-                      onTap: () => _play(context),
-                    ),
+                      const SizedBox(height: 10),
+                      Text(
+                        'Available on CineSrc after the release date.',
+                        style: context.appTextTheme.bodyMedium,
+                      ),
+                    ] else ...[
+                      const SizedBox(height: 26),
+                      Text(
+                        'Watch on CineSrc',
+                        style: context.appTextTheme.headlineSmall?.copyWith(
+                          color: context.appOnSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      _SourceButton(
+                        label: 'CineSrc',
+                        defaultSource: true,
+                        onTap: () => _play(context),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -159,7 +189,7 @@ class DetailScreen extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
           ),
         ),
-        icon: const Icon(Icons.play_arrow_rounded, size: 30),
+        icon: const Icon(Symbols.play_arrow_rounded, size: 30),
         label: Text(
           'Play Now',
           style: context.appTextTheme.titleMedium?.copyWith(
@@ -171,12 +201,59 @@ class DetailScreen extends StatelessWidget {
     );
   }
 
+  Widget _comingSoonCard(BuildContext context, String releaseDate) {
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    final date = DateTime.tryParse(releaseDate);
+    final label = date == null
+        ? releaseDate
+        : '${months[date.month - 1]} ${date.day}, ${date.year}';
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: context.appAccentSoft,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: context.appAccent.withValues(alpha: 0.4),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(Symbols.upcoming_rounded, size: 24, color: context.appAccent),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'In theaters soon',
+                  style: context.appTextTheme.titleMedium?.copyWith(
+                    color: context.appOnSurface,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Releases $label',
+                  style: context.appTextTheme.bodyMedium,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _posterOnly(BuildContext context) {
     return Center(
       child: SizedBox(
         height: 180,
         child: item.posterUrl.isEmpty
-            ? Icon(Icons.local_movies_outlined,
+            ? Icon(Symbols.local_movies_rounded,
                 size: 64, color: context.appOnSurfaceVariant)
             : Image.network(item.posterUrl, fit: BoxFit.contain),
       ),
@@ -220,7 +297,7 @@ class _SourceButton extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(Icons.play_circle_outline,
+            Icon(Symbols.play_circle_rounded,
                 size: 22, color: context.appAccent),
             const SizedBox(width: 12),
             Expanded(
@@ -231,7 +308,7 @@ class _SourceButton extends StatelessWidget {
                 ),
               ),
             ),
-            Icon(Icons.arrow_forward_ios,
+            Icon(Symbols.chevron_right_rounded,
                 size: 16, color: context.appOnSurfaceVariant),
           ],
         ),

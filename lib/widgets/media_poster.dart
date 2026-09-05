@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/material_symbols_icons.dart';
 
 import '../models/media_item.dart';
 import '../theme/app_theme.dart';
@@ -60,7 +61,7 @@ class MediaPoster extends StatelessWidget {
   Widget _placeholder(BuildContext context) {
     return Center(
       child: Icon(
-        Icons.local_movies_outlined,
+        Symbols.local_movies_rounded,
         size: 32,
         color: context.appOnSurfaceVariant,
       ),

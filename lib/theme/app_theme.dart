@@ -5,7 +5,6 @@ class AppColors {
   AppColors._();
 
   // ── Light theme base values ───────────────────────────────────────
-  // Warm monochrome + one muted pastel accent.
   static const _lBackground = Color(0xFFF6F4EF); // warm bone
   static const _lSurface = Color(0xFFFFFFFF);
   static const _lOnSurface = Color(0xFF2A2B2E); // off-black charcoal
@@ -48,6 +47,15 @@ class AppColors {
   static Color get onAccent => _palette.onAccent;
 
   static AppAccent get _palette => _isDark ? _accent.dark : _accent.light;
+}
+
+/// Radius scale used by the flat, web-style components.
+class AppRadius {
+  AppRadius._();
+
+  static const double card = 16;
+  static const double control = 12;
+  static const double field = 10;
 }
 
 /// A coherent accent family for one theme mode: the accent itself, its soft
@@ -255,6 +263,17 @@ TextTheme buildAppTextTheme(TextTheme base) {
       height: 1.6,
       fontWeight: FontWeight.w400,
       color: AppColors.onSurfaceVariant,
+    ),
+    labelSmall: sans.labelSmall?.copyWith(
+      fontSize: 11,
+      fontWeight: FontWeight.w600,
+      letterSpacing: 1.4,
+      color: AppColors.onSurfaceVariant,
+    ),
+    labelMedium: sans.labelMedium?.copyWith(
+      fontSize: 13,
+      fontWeight: FontWeight.w500,
+      letterSpacing: 0.2,
     ),
   );
 }
