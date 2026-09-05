@@ -12,7 +12,7 @@ class DetailScreen extends StatelessWidget {
 
   String get _mediaParam => item.mediaType == 'tv' ? 'tvplay' : 'movie';
 
-  void _play(BuildContext context, {int index = 0}) {
+  void _play(BuildContext context) {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -20,7 +20,6 @@ class DetailScreen extends StatelessWidget {
           title: item.title,
           id: item.id,
           media: _mediaParam,
-          initialIndex: index,
         ),
       ),
     );
@@ -124,24 +123,17 @@ class DetailScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 26),
                     Text(
-                      'Watch on',
+                      'Watch on CineSrc',
                       style: context.appTextTheme.headlineSmall?.copyWith(
                         color: context.appOnSurface,
                       ),
                     ),
                     const SizedBox(height: 10),
-                    ...EmbedSources.sources.asMap().entries.map((entry) {
-                      final index = entry.key;
-                      final name = entry.value.$1;
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: _SourceButton(
-                          label: name,
-                          defaultSource: index == 0,
-                          onTap: () => _play(context, index: index),
-                        ),
-                      );
-                    }),
+                    _SourceButton(
+                      label: 'CineSrc',
+                      defaultSource: true,
+                      onTap: () => _play(context),
+                    ),
                   ],
                 ),
               ),

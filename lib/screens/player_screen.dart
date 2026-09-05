@@ -9,21 +9,19 @@ import '../config.dart';
 import '../theme/app_theme.dart';
 import '../widgets/embed_ad_guard.dart';
 
-/// A Netflix-style immersive full-screen player. The default provider is
-/// autoplayed on entry; providers can be swapped while watching.
+/// A Netflix-style immersive full-screen player. The CineSrc provider is
+/// autoplayed on entry and the in-page ad layer is stripped by the guard.
 class PlayerScreen extends StatefulWidget {
   const PlayerScreen({
     super.key,
     required this.title,
     required this.id,
     required this.media,
-    this.initialIndex = 0,
   });
 
   final String title;
   final int id;
   final String media;
-  final int initialIndex;
 
   @override
   State<PlayerScreen> createState() => _PlayerScreenState();
@@ -31,7 +29,6 @@ class PlayerScreen extends StatefulWidget {
 
 class _PlayerScreenState extends State<PlayerScreen> {
   late WebViewController _controller;
-  late int _index;
   bool _loading = true;
   bool _controlsVisible = true;
   Timer? _hideTimer;
@@ -39,8 +36,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   @override
   void initState() {
     super.initState();
-    _index = widget.initialIndex;
-    _controller = _buildController(_urlForIndex(_index));
+    _controller = _buildController(_url());
     _scheduleHide();
   }
 
@@ -51,8 +47,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
     super.dispose();
   }
 
-  String _urlForIndex(int index) {
-    final src = EmbedSources.sources[index];
+  String _url() {
+    final src = EmbedSources.sources.first;
     return src.$2(id: widget.id, media: widget.media);
   }
 
@@ -111,14 +107,34 @@ class _PlayerScreenState extends State<PlayerScreen> {
     });
   }
 
-  void _switchSource(int index) {
-    if (index == _index) return;
-    setState(() {
-      _index = index;
-      _loading = true;
-    });
-    _controller.loadRequest(Uri.parse(_urlForIndex(index)));
-    _scheduleHide();
+  Future<void> _dumpDom() async {
+    final payload = await EmbedAdGuard.dumpStructure(_controller);
+    if (!mounted) return;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.black,
+        title: const Text('Embed DOM dump',
+            style: TextStyle(color: Colors.white)),
+        content: SingleChildScrollView(
+          child: SelectableText(
+            payload ?? 'dump failed',
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 11,
+              fontFamily: 'monospace',
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -146,11 +162,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 opacity: _controlsVisible ? 1 : 0,
                 duration: const Duration(milliseconds: 200),
                 child: _topBar(context),
-              ),
-              AnimatedOpacity(
-                opacity: _controlsVisible ? 1 : 0,
-                duration: const Duration(milliseconds: 200),
-                child: _bottomBar(context),
               ),
             ],
           ),
@@ -193,78 +204,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 ),
               ),
             ),
+            IconButton(
+              tooltip: 'Dump DOM',
+              onPressed: _dumpDom,
+              icon: const Icon(Icons.bug_report,
+                  color: Colors.white, size: 22),
+            ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _bottomBar(BuildContext context) {
-    return Align(
-      alignment: Alignment.bottomCenter,
-      child: Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.bottomCenter,
-            end: Alignment.topCenter,
-            colors: [
-              Colors.black.withValues(alpha: 0.85),
-              Colors.transparent,
-            ],
-          ),
-        ),
-        padding: const EdgeInsets.fromLTRB(12, 20, 12, 10),
-        child: Row(
-          children: [
-            for (var i = 0; i < EmbedSources.sources.length; i++)
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 3),
-                  child: _SourceChip(
-                    label: EmbedSources.sources[i].$1,
-                    active: i == _index,
-                    onTap: () => _switchSource(i),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SourceChip extends StatelessWidget {
-  const _SourceChip({
-    required this.label,
-    required this.active,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(
-          color: active ? Colors.white : Colors.white.withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: context.appTextTheme.bodyMedium?.copyWith(
-            color: active ? Colors.black : Colors.white,
-            fontWeight: FontWeight.w600,
-          ),
         ),
       ),
     );
