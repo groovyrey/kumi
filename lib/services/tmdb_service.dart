@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../config.dart';
+import '../models/genre.dart';
 import '../models/media_item.dart';
 import '../models/series_details.dart';
 
@@ -117,6 +118,29 @@ class TmdbService {
       totalPages: total,
     );
   }
+
+  /// The TMDB movie genre list for the category dropdown.
+  Future<List<Genre>> movieGenres() async {
+    final res = await _client.get(_uri('/genre/$_media/list'));
+    if (res.statusCode != 200) {
+      throw Exception('TMDB genres failed: ${res.statusCode}');
+    }
+    final data = jsonDecode(res.body) as Map<String, dynamic>;
+    final list = data['genres'] as List? ?? const [];
+    return list
+        .map((e) => Genre.fromJson(e as Map<String, dynamic>))
+        .where((g) => g.name.isNotEmpty)
+        .toList();
+  }
+
+  /// Movies inside a genre, using the TMDB discover endpoint.
+  Future<MediaPage> genreMoviesPage(int genreId, {int page = 1}) =>
+      _fetchPage(
+        '/discover/$_media',
+        _media,
+        page: page,
+        query: {'with_genres': '$genreId'},
+      );
 
   // ── First-page shortcuts used by one-shot callers ────────────────────
 

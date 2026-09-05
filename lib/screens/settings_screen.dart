@@ -11,18 +11,6 @@ import '../widgets/web_controls.dart';
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
-  int _themeIndex(ThemeMode mode) => switch (mode) {
-        ThemeMode.light => 0,
-        ThemeMode.dark => 1,
-        ThemeMode.system => 2,
-      };
-
-  ThemeMode _modeAt(int index) => switch (index) {
-        0 => ThemeMode.light,
-        1 => ThemeMode.dark,
-        _ => ThemeMode.system,
-      };
-
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
@@ -44,31 +32,59 @@ class SettingsScreen extends StatelessWidget {
           const SizedBox(height: 28),
           _eyebrow(context, 'Theme'),
           const SizedBox(height: 10),
-          SurfaceCard(
-            child: Segmented(
-              labels: const ['Light', 'Dark', 'System'],
-              selectedIndex: _themeIndex(state.themeMode),
-              onChanged: (i) => state.setThemeMode(_modeAt(i)),
-            ),
+          AppDropdown<ThemeMode>(
+            value: state.themeMode,
+            hint: 'Theme',
+            onChanged: (mode) {
+              if (mode != null) state.setThemeMode(mode);
+            },
+            options: [
+              AppDropdownOption(
+                ThemeMode.light,
+                'Light',
+                leading: Icon(
+                  Symbols.light_mode_rounded,
+                  size: 18,
+                  color: context.appAccent,
+                ),
+              ),
+              AppDropdownOption(
+                ThemeMode.dark,
+                'Dark',
+                leading: Icon(
+                  Symbols.dark_mode_rounded,
+                  size: 18,
+                  color: context.appAccent,
+                ),
+              ),
+              AppDropdownOption(
+                ThemeMode.system,
+                'System',
+                leading: Icon(
+                  Symbols.brightness_auto_rounded,
+                  size: 18,
+                  color: context.appAccent,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 28),
           _eyebrow(context, 'Accent color'),
           const SizedBox(height: 10),
-          SurfaceCard(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
-            child: Wrap(
-              spacing: 16,
-              runSpacing: 16,
-              children: [
-                for (final option in AccentOption.values)
-                  _accentSwatch(
-                    context,
-                    option,
-                    isDark: isDark,
-                    selected: state.accent == option,
-                  ),
-              ],
-            ),
+          AppDropdown<AccentOption>(
+            value: state.accent,
+            hint: 'Accent',
+            onChanged: (accent) {
+              if (accent != null) state.setAccent(accent);
+            },
+            options: [
+              for (final option in AccentOption.values)
+                AppDropdownOption(
+                  option,
+                  option.label,
+                  leading: _accentDot(context, option, isDark: isDark),
+                ),
+            ],
           ),
           const SizedBox(height: 34),
           Center(
@@ -91,36 +107,20 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _accentSwatch(
+  Widget _accentDot(
     BuildContext context,
     AccentOption option, {
     required bool isDark,
-    required bool selected,
   }) {
     final palette = isDark ? option.dark : option.light;
-    return Tooltip(
-      message: option.label,
-      child: InkWell(
-        onTap: () => context.read<AppState>().setAccent(option),
-        customBorder: const CircleBorder(),
-        child: Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            color: palette.accent,
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: selected ? context.appAccent : AppColors.cardBorder,
-              width: selected ? 2.5 : 1,
-            ),
-          ),
-          child: selected
-              ? Icon(
-                  Symbols.check_rounded,
-                  size: 21,
-                  color: palette.onAccent,
-                )
-              : null,
+    return Container(
+      width: 16,
+      height: 16,
+      decoration: BoxDecoration(
+        color: palette.accent,
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: context.appOnSurface.withValues(alpha: 0.2),
         ),
       ),
     );

@@ -210,12 +210,20 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: SurfaceCard(
                   child: Column(
                     children: [
-                      Icon(
-                        Symbols.play_circle_rounded,
-                        size: 28,
-                        color: context.appOnSurfaceVariant,
+                      Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          color: context.appAccentSoft,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Symbols.play_circle_rounded,
+                          size: 28,
+                          color: context.appAccent,
+                        ),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 12),
                       Text(
                         'Nothing watched yet',
                         textAlign: TextAlign.center,
@@ -393,20 +401,30 @@ class _ScreenTimeCard extends StatelessWidget {
   String _weekdayLetter(DateTime day) =>
       const ['M', 'T', 'W', 'T', 'F', 'S', 'S'][day.weekday - 1];
 
-  Widget _Stat(BuildContext context, String label, String value) {
+  Widget _Stat(
+    BuildContext context,
+    String label,
+    String value, {
+    bool accentValue = false,
+  }) {
     return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label.toUpperCase(),
-            style: context.appTextTheme.labelSmall?.copyWith(fontSize: 10),
+            style: context.appTextTheme.labelSmall?.copyWith(
+              fontSize: 10,
+              color: accentValue
+                  ? context.appAccent
+                  : context.appOnSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             value,
             style: context.appTextTheme.titleMedium?.copyWith(
-              color: context.appOnSurface,
+              color: accentValue ? context.appAccent : context.appOnSurface,
               fontWeight: FontWeight.w700,
             ),
           ),

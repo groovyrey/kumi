@@ -309,7 +309,7 @@ class _SourceButton extends StatelessWidget {
               ),
             ),
             Icon(Symbols.chevron_right_rounded,
-                size: 16, color: context.appOnSurfaceVariant),
+                size: 16, color: context.appAccent),
           ],
         ),
       ),

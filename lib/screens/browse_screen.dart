@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/material_symbols_icons.dart';
 
+import '../models/genre.dart';
 import '../services/tmdb_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/lazy_media_grid.dart';
@@ -34,6 +35,27 @@ class _BrowseScreenState extends State<BrowseScreen> {
   final _controller = TextEditingController();
   Timer? _debounce;
   String _query = '';
+  List<Genre> _genres = [];
+  int _genreId = -1;
+
+  static const _allCategories = -1;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadGenres();
+  }
+
+  Future<void> _loadGenres() async {
+    try {
+      final genres = await _tmdb.movieGenres();
+      if (mounted && genres.isNotEmpty) {
+        setState(() => _genres = genres);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _genres = Genre.common);
+    }
+  }
 
   late final List<_Section> _sections = [
     _Section(
@@ -117,7 +139,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
           prefixIcon: Icon(
             Symbols.search_rounded,
             size: 20,
-            color: context.appOnSurfaceVariant,
+            color: context.appAccent,
           ),
           suffixIcon: _query.isEmpty
               ? null
@@ -160,6 +182,47 @@ class _BrowseScreenState extends State<BrowseScreen> {
     );
   }
 
+  Widget _genreResults(BuildContext context, Genre genre) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+          child: Text(
+            '${genre.name.toUpperCase()} MOVIES',
+            style: context.appTextTheme.labelSmall?.copyWith(
+              color: context.appAccent,
+            ),
+          ),
+        ),
+        Expanded(
+          child: LazyMediaGrid(
+            key: ValueKey('genre-${genre.id}'),
+            fetch: (page) => _tmdb.genreMoviesPage(genre.id, page: page),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _categoryDropdown(BuildContext context) {
+    return AppDropdown<int>(
+      value: _genreId,
+      hint: 'All categories',
+      fieldLeading: Icon(
+        Symbols.category_rounded,
+        size: 20,
+        color: context.appAccent,
+      ),
+      onChanged: (value) => setState(() => _genreId = value ?? _allCategories),
+      options: [
+        const AppDropdownOption<int>(_allCategories, 'All categories'),
+        for (final genre in _genres)
+          AppDropdownOption<int>(genre.id, genre.name),
+      ],
+    );
+  }
+
   Widget _sectionsScroll(BuildContext context) {
     return CustomScrollView(
       slivers: [
@@ -187,13 +250,16 @@ class _BrowseScreenState extends State<BrowseScreen> {
                         children: [
                           Text(
                             'See all',
-                            style: context.appTextTheme.bodyMedium,
+                            style: context.appTextTheme.bodyMedium?.copyWith(
+                              color: context.appAccent,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                           const SizedBox(width: 2),
                           Icon(
                             Symbols.chevron_right_rounded,
                             size: 12,
-                            color: context.appOnSurfaceVariant,
+                            color: context.appAccent,
                           ),
                         ],
                       ),
@@ -215,6 +281,14 @@ class _BrowseScreenState extends State<BrowseScreen> {
   @override
   Widget build(BuildContext context) {
     final searching = _query.isNotEmpty;
+    final genre = _genreId > 0
+        ? (_genres.isNotEmpty
+            ? _genres.firstWhere(
+                (g) => g.id == _genreId,
+                orElse: () => Genre(id: _genreId, name: 'Category'),
+              )
+            : Genre(id: _genreId, name: 'Category'))
+        : null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -238,10 +312,16 @@ class _BrowseScreenState extends State<BrowseScreen> {
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
           child: _searchField(context),
         ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
+          child: _categoryDropdown(context),
+        ),
         Expanded(
           child: searching
               ? _searchResults(context)
-              : _sectionsScroll(context),
+              : genre != null
+                  ? _genreResults(context, genre)
+                  : _sectionsScroll(context),
         ),
       ],
     );

@@ -14,15 +14,15 @@ class AppColors {
   static const _lError = Color(0xFF9F2F2D);
   static const _lSurfaceVar = Color(0xFFF0EEE9);
 
-  // ── Dark theme base values ────────────────────────────────────────
-  static const _dBckground = Color(0xFF131214); // warm near-black
-  static const _dSurface = Color(0xFF1C1B1F);
-  static const _dOnSurface = Color(0xFFEDEBE6);
-  static const _dOnSurfaceVar = Color(0xFF9B998F);
-  static const _dOutline = Color(0xFF2C2B2F);
-  static const _dCardBorder = Color(0xFF2C2B2F);
+  // ── Dark theme base values (true black, Netflix style) ───────────
+  static const _dBckground = Color(0xFF000000); // pure black
+  static const _dSurface = Color(0xFF141414); // Netflix card surface
+  static const _dOnSurface = Color(0xFFF5F5F5); // near-white
+  static const _dOnSurfaceVar = Color(0xFFB3B3B3); // Netflix gray
+  static const _dOutline = Color(0xFF2F2F2F);
+  static const _dCardBorder = Color(0xFF2F2F2F);
   static const _dError = Color(0xFFE58B89);
-  static const _dSurfaceVar = Color(0xFF26252A);
+  static const _dSurfaceVar = Color(0xFF1E1E1E);
 
   // ── Runtime brightness + accent flags ─────────────────────────────
   static bool _isDark = false;
@@ -167,10 +167,10 @@ ThemeData buildAppTheme() {
     useMaterial3: true,
     brightness: Brightness.light,
     colorScheme: ColorScheme.light(
-      primary: AppColors._lOnSurface,
-      onPrimary: AppColors._lSurface,
-      primaryContainer: AppColors._lSurfaceVar,
-      onPrimaryContainer: AppColors._lOnSurface,
+      primary: AppColors.accent,
+      onPrimary: AppColors.onAccent,
+      primaryContainer: AppColors.accentSoft,
+      onPrimaryContainer: AppColors.accent,
       secondary: AppColors.accent,
       onSecondary: AppColors.onAccent,
       secondaryContainer: AppColors.accentSoft,
@@ -198,10 +198,10 @@ ThemeData buildDarkTheme() {
     useMaterial3: true,
     brightness: Brightness.dark,
     colorScheme: ColorScheme.dark(
-      primary: AppColors._dOnSurface,
-      onPrimary: AppColors._dSurface,
-      primaryContainer: AppColors._dSurfaceVar,
-      onPrimaryContainer: AppColors._dOnSurface,
+      primary: AppColors.accent,
+      onPrimary: AppColors.onAccent,
+      primaryContainer: AppColors.accentSoft,
+      onPrimaryContainer: AppColors.accent,
       secondary: AppColors.accent,
       onSecondary: AppColors.onAccent,
       secondaryContainer: AppColors.accentSoft,

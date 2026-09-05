@@ -31,7 +31,8 @@ void main() {
     await boot(tester);
 
     expect(find.text('Kumi'), findsWidgets);
-    expect(find.byType(NavigationRail), findsOneWidget);
+    expect(find.text('Home'), findsWidgets);
+    expect(find.text('Browse'), findsWidgets);
     expect(find.text('Screen time'), findsOneWidget);
     expect(find.text('Nothing watched yet'), findsOneWidget);
     expect(find.byIcon(Symbols.search_rounded), findsNothing);
@@ -40,13 +41,11 @@ void main() {
   testWidgets('browse carries the search field', (tester) async {
     await boot(tester);
 
-    await tester.tap(find.descendant(
-      of: find.byType(AppBar),
-      matching: find.byIcon(Symbols.grid_view_rounded),
-    ));
+    await tester.tap(find.text('Browse').first);
     await tester.pumpAndSettle();
 
     expect(find.text('Browse'), findsWidgets);
     expect(find.byType(TextField), findsOneWidget);
+    expect(find.text('All categories'), findsOneWidget);
   });
 }

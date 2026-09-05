@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:material_symbols_icons/material_symbols_icons.dart';
 
 import '../theme/app_theme.dart';
 
@@ -97,6 +98,123 @@ class SurfaceCard extends StatelessWidget {
         border: Border.all(color: AppColors.cardBorder),
       ),
       child: child,
+    );
+  }
+}
+
+/// One entry in an [AppDropdown]: a value, a label, and an optional leading
+/// widget (an icon or a color dot) shown in both the field and the menu.
+class AppDropdownOption<T> {
+  const AppDropdownOption(this.value, this.label, {this.leading});
+
+  final T value;
+  final String label;
+  final Widget? leading;
+}
+
+/// A web-style select: a hairline field with an optional leading widget, a
+/// quiet hint when nothing is chosen, and a themed popup menu. Reusable for
+/// any single-choice preference or filter (categories, theme, accent, ...).
+class AppDropdown<T> extends StatelessWidget {
+  const AppDropdown({
+    super.key,
+    required this.options,
+    required this.onChanged,
+    this.value,
+    this.hint = 'Select',
+    this.fieldLeading,
+  });
+
+  final List<AppDropdownOption<T>> options;
+  final ValueChanged<T?> onChanged;
+  final T? value;
+  final String hint;
+  final Widget? fieldLeading;
+
+  AppDropdownOption<T>? _selected() {
+    for (final option in options) {
+      if (option.value == value) return option;
+    }
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = _selected();
+    final leading = fieldLeading ?? selected?.leading;
+    return Container(
+      width: double.infinity,
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        color: context.appSurface,
+        borderRadius: BorderRadius.circular(AppRadius.field),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Row(
+        children: [
+          if (leading != null) ...[
+            SizedBox(width: 26, height: 26, child: Center(child: leading)),
+            const SizedBox(width: 10),
+          ],
+          Expanded(
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<T>(
+                value: value,
+                isExpanded: true,
+                isDense: true,
+                borderRadius: BorderRadius.circular(AppRadius.card),
+                dropdownColor: context.appSurface,
+                icon: Icon(
+                  Symbols.expand_more_rounded,
+                  size: 20,
+                  color: context.appOnSurfaceVariant,
+                ),
+                hint: Text(
+                  hint,
+                  style: context.appTextTheme.bodyMedium?.copyWith(
+                    color: context.appOnSurfaceVariant,
+                  ),
+                ),
+                items: [
+                  for (final option in options)
+                    DropdownMenuItem<T>(
+                      value: option.value,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        child: Row(
+                          children: [
+                            if (option.leading != null) ...[
+                              SizedBox(
+                                width: 26,
+                                height: 26,
+                                child: Center(child: option.leading),
+                              ),
+                              const SizedBox(width: 10),
+                            ],
+                            Expanded(
+                              child: Text(
+                                option.label,
+                                style: context.appTextTheme.bodyMedium?.copyWith(
+                                  color: context.appOnSurface,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+                onChanged: onChanged,
+                style: context.appTextTheme.bodyMedium?.copyWith(
+                  color: context.appOnSurface,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
