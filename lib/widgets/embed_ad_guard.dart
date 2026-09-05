@@ -234,9 +234,9 @@ class EmbedAdGuard {
   /// payload as a string (null on failure).
   static Future<String?> dumpStructure(WebViewController controller) async {
     try {
-      return await controller.runJavaScriptReturningResult(
-        dumpStructureScript,
-      );
+      final result =
+          await controller.runJavaScriptReturningResult(dumpStructureScript);
+      return result is String ? result : null;
     } catch (_) {
       return null;
     }
