@@ -234,6 +234,20 @@ class _PlayerScreenState extends State<PlayerScreen> {
                               ),
                             ),
                             IconButton(
+                              onPressed: () async {
+                                await Clipboard.setData(ClipboardData(
+                                    text: _auditReport ?? ''));
+                              },
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(
+                                  minWidth: 32, minHeight: 32),
+                              icon: const Icon(
+                                PhosphorIcons.copySimple(),
+                                color: Colors.white70,
+                                size: 16,
+                              ),
+                            ),
+                            IconButton(
                               onPressed: () =>
                                   setState(() => _auditOpen = false),
                               padding: EdgeInsets.zero,
