@@ -241,7 +241,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(
                                   minWidth: 32, minHeight: 32),
-                              icon: const Icon(
+                              icon: Icon(
                                 PhosphorIcons.copySimple(),
                                 color: Colors.white70,
                                 size: 16,
