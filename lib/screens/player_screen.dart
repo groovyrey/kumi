@@ -99,7 +99,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         ].join(' ');
         lines.add(summary);
         if (text.toString().isNotEmpty) {
-          lines.add('   "${text}"');
+          lines.add('   "$text"');
         }
       }
       return lines.join('\n');
@@ -239,7 +239,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(
                                   minWidth: 32, minHeight: 32),
-                              icon: const Icon(
+                              icon: Icon(
                                 PhosphorIcons.x(),
                                 color: Colors.white70,
                                 size: 16,
