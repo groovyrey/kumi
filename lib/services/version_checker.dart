@@ -24,8 +24,8 @@ class VersionChecker {
 
   final http.Client _client;
 
-  static const _tagUrl =
-      'https://api.github.com/repos/groovyrey/kumi/releases/latest';
+  static const _listUrl =
+      'https://api.github.com/repos/groovyrey/kumi/releases';
   static const _releasesUrl = 'https://github.com/groovyrey/kumi/releases/latest';
   static const _cacheWindow = Duration(hours: 24);
   static const _cachedVersionKey = 'cached_latest_version';
@@ -55,14 +55,23 @@ class VersionChecker {
       if (withinWindow) return null;
 
       final res = await _client
-          .get(Uri.parse(_tagUrl), headers: const {'User-Agent': 'kumi'})
+          .get(Uri.parse(_listUrl), headers: const {'User-Agent': 'kumi'})
           .timeout(const Duration(seconds: 8));
       if (res.statusCode != 200) return null;
 
-      final data = jsonDecode(res.body) as Map<String, dynamic>;
-      final tag = (data['tag_name'] as String?) ?? '';
+      final data = jsonDecode(res.body) as List<dynamic>;
+      Map<String, dynamic>? latest;
+      for (final entry in data) {
+        final item = (entry as Map).cast<String, dynamic>();
+        if (item['draft'] == true || item['prerelease'] == true) continue;
+        latest = item;
+        break;
+      }
+      if (latest == null) return null;
+
+      final tag = (latest['tag_name'] as String?) ?? '';
       final version = tag.startsWith('v') ? tag.substring(1) : tag;
-      final url = data['html_url'] as String? ?? _releasesUrl;
+      final url = latest['html_url'] as String? ?? _releasesUrl;
       if (version.isEmpty) return null;
 
       await prefs.setInt(

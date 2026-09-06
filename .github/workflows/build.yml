@@ -94,3 +94,25 @@ jobs:
           tag_name: ${{ steps.version.outputs.tag }}
           files: build/app/outputs/flutter-apk/Kumi-${{ steps.version.outputs.version_clean }}.apk
           generate_release_notes: true
+
+      - name: Prepare beta APK filename
+        if: github.ref == 'refs/heads/main'
+        run: |
+          cp build/app/outputs/flutter-apk/Kumi-${{ steps.version.outputs.version_clean }}.apk \
+             build/app/outputs/flutter-apk/Kumi-${{ steps.version.outputs.version_clean }}-beta.apk
+
+      - name: Publish rolling beta pre-release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Kumi Beta"
+          tag_name: beta
+          body: |
+            Rolling test build from `main`. Release-signed with the real
+            keystore, so it installs over any previous Kumi build.
+
+            This is a pre-release for testing before the version is cut to a
+            real release. The stable app never announces it — only install it
+            when you intend to test the newest changes.
+          files: build/app/outputs/flutter-apk/Kumi-${{ steps.version.outputs.version_clean }}-beta.apk
+          prerelease: true
