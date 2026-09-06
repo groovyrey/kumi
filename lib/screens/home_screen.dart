@@ -124,7 +124,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 SizedBox(
-                  height: 212,
+                  height: 200,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -701,7 +701,7 @@ class _ContinueCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final height = width * 1.5;
+    final height = width * 1.4;
     final item = entry.item;
     return GestureDetector(
       onTap: onTap,
@@ -788,7 +788,7 @@ class _ContinueCard extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               item.title,
-              maxLines: 2,
+              maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: context.appTextTheme.bodyMedium?.copyWith(
                 color: context.appOnSurface,
