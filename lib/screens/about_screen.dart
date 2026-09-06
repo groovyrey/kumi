@@ -11,6 +11,7 @@ class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
 
   static const _githubUrl = 'https://github.com/groovyrey';
+  static const _facebookUrl = 'https://www.facebook.com/share/1EGK4rZKfQ/';
   static const _email = 'reymartcenteno03@gmail.com';
   static const _purposeLabel = 'Kumi is a place to watch movies and the shows people keep talking about.';
   static const _purposeBody = 'Browse the latest films, dive into a title, and start streaming in seconds — no accounts, no noise, just the watch.';
@@ -42,14 +43,6 @@ class AboutScreen extends StatelessWidget {
               'Kumi',
               style: context.appTextTheme.displayMedium?.copyWith(
                 color: context.appOnSurface,
-              ),
-            ),
-          ),
-          Center(
-            child: Text(
-              'A quiet place to watch',
-              style: context.appTextTheme.bodyMedium?.copyWith(
-                color: context.appAccent,
               ),
             ),
           ),
@@ -131,7 +124,7 @@ class AboutScreen extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Built with care by Reymart Centeno · dev name groovyrey',
+                  'Developed and maintained by Groovyrey',
                   textAlign: TextAlign.center,
                   style: context.appTextTheme.bodyMedium,
                 ),
@@ -146,7 +139,16 @@ class AboutScreen extends StatelessWidget {
                       margin: const EdgeInsets.symmetric(horizontal: 13),
                       color: AppColors.cardBorder,
                     ),
-                    _linkText(context, 'Email', PhosphorIcons.envelope(), 'mailto:$_email'),
+                    _linkText(
+                        context, 'Facebook', PhosphorIcons.facebookLogo(), _facebookUrl),
+                    Container(
+                      width: 1,
+                      height: 14,
+                      margin: const EdgeInsets.symmetric(horizontal: 13),
+                      color: AppColors.cardBorder,
+                    ),
+                    _linkText(
+                        context, 'Email', PhosphorIcons.envelope(), 'mailto:$_email'),
                   ],
                 ),
               ],
