@@ -8,7 +8,7 @@ class AppState extends ChangeNotifier {
   static const _accentKey = 'accent_color';
 
   ThemeMode _themeMode = ThemeMode.system;
-  AccentOption _accent = AccentOption.ocean;
+  AccentOption _accent = AccentOption.crimson;
 
   ThemeMode get themeMode => _themeMode;
 
@@ -29,7 +29,7 @@ class AppState extends ChangeNotifier {
     };
     _accent = AccentOption.values.firstWhere(
       (option) => option.name == prefs.getString(_accentKey),
-      orElse: () => AccentOption.ocean,
+      orElse: () => AccentOption.crimson,
     );
     notifyListeners();
   }

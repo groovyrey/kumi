@@ -1,8 +1,9 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:material_symbols_icons/material_symbols_icons.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
+import '../services/favorites.dart';
 import '../services/screen_time.dart';
 import '../services/watch_history.dart';
 import '../theme/app_theme.dart';
@@ -10,6 +11,7 @@ import '../widgets/kumi_mark.dart';
 import 'about_screen.dart';
 import 'browse_screen.dart';
 import 'home_screen.dart';
+import 'my_list_screen.dart';
 import 'schedule_screen.dart';
 import 'settings_screen.dart';
 
@@ -26,14 +28,15 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   int _index = 0;
-  final List<Widget?> _screens = List<Widget?>.filled(5, null);
+  final List<Widget?> _screens = List<Widget?>.filled(6, null);
 
-  static const _items = <(IconData, String)>[
-    (Symbols.home_rounded, 'Home'),
-    (Symbols.explore_rounded, 'Browse'),
-    (Symbols.event_rounded, 'Schedule'),
-    (Symbols.settings_rounded, 'Settings'),
-    (Symbols.info_rounded, 'About'),
+  static final _items = <(IconData, String)>[
+    (PhosphorIcons.house(), 'Home'),
+    (PhosphorIcons.bookmarks(), 'My List'),
+    (PhosphorIcons.compass(), 'Browse'),
+    (PhosphorIcons.calendar(), 'Schedule'),
+    (PhosphorIcons.gearSix(), 'Settings'),
+    (PhosphorIcons.info(), 'About'),
   ];
 
   @override
@@ -45,6 +48,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     ScreenTime.instance.setActive(true);
     ScreenTime.instance.switchSection('Home');
     WatchHistory.instance.ensureLoaded();
+    Favorites.instance.ensureLoaded();
   }
 
   @override
@@ -62,9 +66,10 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     if (_screens[index] == null) {
       _screens[index] = switch (index) {
         0 => const HomeScreen(),
-        1 => BrowseScreen(),
-        2 => const ScheduleScreen(),
-        3 => const SettingsScreen(),
+        1 => const MyListScreen(),
+        2 => BrowseScreen(),
+        3 => const ScheduleScreen(),
+        4 => const SettingsScreen(),
         _ => const AboutScreen(),
       };
     }

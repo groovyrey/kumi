@@ -1,18 +1,23 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
-import 'package:material_symbols_icons/material_symbols_icons.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../config.dart';
 import '../models/media_item.dart';
 import '../services/screen_time.dart';
+import '../services/tmdb_service.dart';
 import '../services/version_checker.dart';
 import '../services/watch_history.dart';
 import '../theme/app_theme.dart';
+import '../widgets/poster_rail.dart';
 import '../widgets/web_controls.dart';
+import 'detail_screen.dart';
 import 'player_screen.dart';
 
-/// Personal dashboard: a time-of-day greeting, screen-time metrics, continue
-/// watching and watch history. Discovery lives in Browse; this page is only
-/// about the viewer.
+/// Netflix-style landing: a spotlight hero, continue watching, discovery
+/// rails, watch history and a compact screen-time card.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -21,22 +26,17 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  static const _weekdaysFull = [
-    'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday',
-    'Sunday',
-  ];
-  static const _monthsFull = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December',
-  ];
-
   final WatchHistory _history = WatchHistory.instance;
+  final TmdbService _tmdb = TmdbService();
+
+  MediaItem? _featured;
   VersionInfo? _update;
 
   @override
   void initState() {
     super.initState();
     _checkForUpdate();
+    _loadHero();
   }
 
   Future<void> _checkForUpdate() async {
@@ -45,7 +45,19 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _update = update);
   }
 
+  Future<void> _loadHero() async {
+    try {
+      var items = (await _tmdb.nowPlayingMoviesPage()).items;
+      if (items.isEmpty) items = (await _tmdb.popularMoviesPage()).items;
+      if (!mounted || items.isEmpty) return;
+      setState(() => _featured = items[Random().nextInt(items.length)]);
+    } catch (_) {
+      // Quiet: the rails still work without a spotlight title.
+    }
+  }
+
   void _play(MediaItem item) {
+    WatchHistory.instance.record(item);
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -58,24 +70,18 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _moreInfo(MediaItem item) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => DetailScreen(item: item)),
+    );
+  }
+
   Future<void> _openRelease(String url) async {
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
-  }
-
-  String get _greeting {
-    final hour = DateTime.now().hour;
-    if (hour < 12) return 'Good morning';
-    if (hour < 18) return 'Good afternoon';
-    return 'Good evening';
-  }
-
-  String get _todayLine {
-    final now = DateTime.now();
-    return '${_weekdaysFull[now.weekday - 1]}, '
-        '${_monthsFull[now.month - 1]} ${now.day}';
   }
 
   String _timeAgo(int epochMs) {
@@ -91,162 +97,340 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final entries = _history.entries;
     return ListenableBuilder(
       listenable: Listenable.merge([_history, ScreenTime.instance]),
       builder: (context, _) {
+        final entries = _history.entries;
         return SingleChildScrollView(
           child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (_update case final VersionInfo update)
-              _UpdateBanner(update: update, onOpen: _openRelease),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 22, 20, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _greeting,
-                    style: context.appTextTheme.headlineMedium?.copyWith(
-                      color: context.appOnSurface,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.5,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (_update case final VersionInfo update)
+                _UpdateBanner(update: update, onOpen: _openRelease),
+              if (_featured case final MediaItem featured)
+                _HeroCard(
+                  item: featured,
+                  onPlay: () => _play(featured),
+                  onMore: () => _moreInfo(featured),
+                ),
+              if (entries.isNotEmpty) ...[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 22, 20, 10),
+                  child: Text(
+                    'CONTINUE WATCHING',
+                    style: context.appTextTheme.labelSmall?.copyWith(
+                      color: context.appAccent,
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(_todayLine, style: context.appTextTheme.bodyMedium),
+                ),
+                SizedBox(
+                  height: 212,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    itemCount: entries.take(10).length,
+                    itemBuilder: (context, i) {
+                      final e = entries.take(10).toList()[i];
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: _ContinueCard(
+                          entry: e,
+                          onTap: () => _play(e.item),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ] else
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 4),
+                  child: SurfaceCard(
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 52,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            color: context.appAccentSoft,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            PhosphorIcons.playCircle(),
+                            size: 28,
+                            color: context.appAccent,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Nothing watched yet',
+                          textAlign: TextAlign.center,
+                          style: context.appTextTheme.titleMedium?.copyWith(
+                            color: context.appOnSurface,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Everything you watch shows up here, ready to continue.',
+                          textAlign: TextAlign.center,
+                          style: context.appTextTheme.bodyMedium,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              _railTitle(context, 'Popular Movies'),
+              PosterRail(fetch: (page) => _tmdb.popularMoviesPage(page: page)),
+              _railTitle(context, 'Popular Series'),
+              PosterRail(fetch: (page) => _tmdb.popularSeriesPage(page: page)),
+              if (entries.isNotEmpty) ...[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 26, 8, 6),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'WATCH HISTORY',
+                          style: context.appTextTheme.labelSmall?.copyWith(
+                            color: context.appAccent,
+                          ),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () => _history.clear(),
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          minimumSize: const Size(0, 36),
+                        ),
+                        child: Text(
+                          'Clear all',
+                          style: TextStyle(color: context.appAccent),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: SurfaceCard(
+                    padding: EdgeInsets.zero,
+                    child: Column(
+                      children: [
+                        for (final entry in entries) ...[
+                          _HistoryTile(
+                            entry: entry,
+                            onTap: () => _play(entry.item),
+                            onRemove: () => _history.remove(entry),
+                            timeAgo: _timeAgo(entry.watchedAt),
+                          ),
+                          Container(height: 1, color: AppColors.cardBorder),
+                        ],
+                        Container(height: 1, color: AppColors.cardBorder),
+                        // Anchor line so last row keeps its hairline divider.
+                        const SizedBox(height: 0),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 26, 20, 0),
+                child: _ScreenTimeCard(),
+              ),
+              const SizedBox(height: 28),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _railTitle(BuildContext context, String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 4),
+      child: Text(
+        title,
+        style: context.appTextTheme.headlineMedium?.copyWith(
+          color: context.appOnSurface,
+        ),
+      ),
+    );
+  }
+}
+
+/// Netflix-style spotlight banner: full-bleed backdrop, bottom gradient, and
+/// Play / More Info actions laid over the title card.
+class _HeroCard extends StatelessWidget {
+  const _HeroCard({required this.item, required this.onPlay, required this.onMore});
+
+  final MediaItem item;
+  final VoidCallback onPlay;
+  final VoidCallback onMore;
+
+  @override
+  Widget build(BuildContext context) {
+    const height = 470.0;
+    final backdrop = item.backdropPath;
+    return SizedBox(
+      width: double.infinity,
+      height: height,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Container(
+            color: context.appSurfaceVariant,
+            child: backdrop == null || backdrop.isEmpty
+                ? _fill(context)
+                : Image.network(
+                    '${AppConfig.tmdbImageBase}$backdrop',
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _fill(context),
+                  ),
+          ),
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+                stops: const [0.0, 0.55, 1.0],
+                colors: [
+                  context.appBackground,
+                  context.appBackground.withValues(alpha: 0.6),
+                  context.appBackground.withValues(alpha: 0.0),
                 ],
               ),
             ),
-            const SizedBox(height: 18),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: _ScreenTimeCard(),
-            ),
-            if (entries.isNotEmpty) ...[
-              const SizedBox(height: 22),
-              Padding(
-                padding: const EdgeInsets.only(left: 20, bottom: 10),
-                child: Text(
-                  'CONTINUE WATCHING',
+          ),
+          Positioned(
+            left: 20,
+            right: 20,
+            bottom: 24,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.mediaType == 'tv' ? 'SERIES' : 'MOVIE',
                   style: context.appTextTheme.labelSmall?.copyWith(
                     color: context.appAccent,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-              ),
-              SizedBox(
-                height: 212,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  itemCount: entries.take(10).length,
-                  itemBuilder: (context, i) {
-                    final e = entries.take(10).toList()[i];
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 12),
-                      child: _ContinueCard(
-                        entry: e,
-                        onTap: () => _play(e.item),
+                const SizedBox(height: 6),
+                Text(
+                  item.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.appTextTheme.displayMedium?.copyWith(
+                    color: Colors.white,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black.withValues(alpha: 0.6),
+                        blurRadius: 12,
                       ),
-                    );
-                  },
+                    ],
+                  ),
                 ),
-              ),
-            ],
-            if (entries.isNotEmpty) ...[
-              const SizedBox(height: 26),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 8, 6),
-                child: Row(
+                const SizedBox(height: 10),
+                Row(
                   children: [
-                    Expanded(
-                      child: Text(
-                        'WATCH HISTORY',
-                        style: context.appTextTheme.labelSmall?.copyWith(
-                          color: context.appAccent,
-                        ),
+                    Icon(PhosphorIcons.star(), size: 17, color: context.appAccent),
+                    const SizedBox(width: 4),
+                    Text(
+                      item.rating.toStringAsFixed(1),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    TextButton(
-                      onPressed: () => _history.clear(),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        minimumSize: const Size(0, 36),
+                    const SizedBox(width: 12),
+                    if (item.releaseDate.isNotEmpty) ...[
+                      Text(
+                        item.releaseDate.length >= 4
+                            ? item.releaseDate.substring(0, 4)
+                            : item.releaseDate,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.85),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                      child: Text(
-                        'Clear all',
-                        style: TextStyle(color: context.appAccent),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  item.overview,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.85),
+                    fontSize: 14,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    FilledButton.icon(
+                      onPressed: onPlay,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 26, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      icon: Icon(PhosphorIcons.play(),
+                          color: Colors.black, size: 26),
+                      label: const Text(
+                        'Play',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    FilledButton.icon(
+                      onPressed: onMore,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: Colors.white.withValues(alpha: 0.35),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      icon: Icon(PhosphorIcons.info(),
+                          color: Colors.white, size: 22),
+                      label: const Text(
+                        'More Info',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.w600),
                       ),
                     ),
                   ],
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: SurfaceCard(
-                  padding: EdgeInsets.zero,
-                  child: Column(
-                    children: [
-                      for (final entry in entries) ...[
-                        _HistoryTile(
-                          entry: entry,
-                          onTap: () => _play(entry.item),
-                          onRemove: () => _history.remove(entry),
-                          timeAgo: _timeAgo(entry.watchedAt),
-                        ),
-                        Container(height: 1, color: AppColors.cardBorder),
-                      ],
-                      Container(height: 1, color: AppColors.cardBorder),
-                      // Anchor line so last row keeps its hairline divider.
-                      const SizedBox(height: 0),
-                    ],
-                  ),
-                ),
-              ),
-            ] else
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 26, 20, 12),
-                child: SurfaceCard(
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 52,
-                        height: 52,
-                        decoration: BoxDecoration(
-                          color: context.appAccentSoft,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Symbols.play_circle_rounded,
-                          size: 28,
-                          color: context.appAccent,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Nothing watched yet',
-                        textAlign: TextAlign.center,
-                        style: context.appTextTheme.titleMedium?.copyWith(
-                          color: context.appOnSurface,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Everything you watch shows up here, ready to continue.',
-                        textAlign: TextAlign.center,
-                        style: context.appTextTheme.bodyMedium,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            const SizedBox(height: 28),
-          ],
+              ],
+            ),
           ),
-        );
-      },
+        ],
+      ),
+    );
+  }
+
+  Widget _fill(BuildContext context) {
+    return Container(
+      color: context.appSurfaceVariant,
+      child: Center(
+        child: Icon(
+          PhosphorIcons.filmSlate(),
+          size: 56,
+          color: context.appOnSurfaceVariant,
+        ),
+      ),
     );
   }
 }
@@ -273,7 +457,7 @@ class _UpdateBanner extends StatelessWidget {
       child: Row(
         children: [
           Icon(
-            Symbols.new_releases_rounded,
+            PhosphorIcons.megaphone(),
             size: 20,
             color: context.appAccent,
           ),
@@ -319,7 +503,7 @@ class _ScreenTimeCard extends StatelessWidget {
           Row(
             children: [
               Icon(
-                Symbols.av_timer_rounded,
+                PhosphorIcons.timer(),
                 size: 20,
                 color: context.appAccent,
               ),
@@ -541,7 +725,7 @@ class _ContinueCard extends StatelessWidget {
                   if (item.posterUrl.isEmpty)
                     Center(
                       child: Icon(
-                        Symbols.local_movies_rounded,
+                        PhosphorIcons.filmSlate(),
                         size: 30,
                         color: context.appOnSurfaceVariant,
                       ),
@@ -552,7 +736,7 @@ class _ContinueCard extends StatelessWidget {
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => Center(
                         child: Icon(
-                          Symbols.local_movies_rounded,
+                          PhosphorIcons.filmSlate(),
                           size: 30,
                           color: context.appOnSurfaceVariant,
                         ),
@@ -592,7 +776,7 @@ class _ContinueCard extends StatelessWidget {
                         ),
                       ),
                       child: const Icon(
-                        Symbols.play_arrow_rounded,
+                        PhosphorIcons.play(),
                         color: Colors.white,
                         size: 26,
                       ),
@@ -650,7 +834,7 @@ class _HistoryTile extends StatelessWidget {
               clipBehavior: Clip.antiAlias,
               child: item.posterUrl.isEmpty
                   ? Icon(
-                      Symbols.local_movies_rounded,
+                      PhosphorIcons.filmSlate(),
                       size: 18,
                       color: context.appOnSurfaceVariant,
                     )
@@ -658,7 +842,7 @@ class _HistoryTile extends StatelessWidget {
                       item.posterUrl,
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => Icon(
-                        Symbols.local_movies_rounded,
+                        PhosphorIcons.filmSlate(),
                         size: 18,
                         color: context.appOnSurfaceVariant,
                       ),
@@ -693,7 +877,7 @@ class _HistoryTile extends StatelessWidget {
               tooltip: 'Remove from history',
               onPressed: onRemove,
               icon: Icon(
-                Symbols.close_rounded,
+                PhosphorIcons.x(),
                 size: 18,
                 color: context.appOnSurfaceVariant,
               ),

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:material_symbols_icons/material_symbols_icons.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../config.dart';
 import '../models/media_item.dart';
+import '../services/favorites.dart';
 import '../services/watch_history.dart';
 import '../theme/app_theme.dart';
 import 'player_screen.dart';
@@ -89,7 +90,34 @@ class DetailScreen extends StatelessWidget {
                         backgroundColor:
                             context.appSurface.withValues(alpha: 0.9),
                       ),
-                      icon: const Icon(Symbols.arrow_back_rounded),
+                      icon: Icon(PhosphorIcons.arrowLeft()),
+                    ),
+                  ),
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: ListenableBuilder(
+                      listenable: Favorites.instance,
+                      builder: (context, _) {
+                        final saved = Favorites.instance.contains(item);
+                        return IconButton(
+                          tooltip: saved ? 'Remove from My List' : 'Add to My List',
+                          onPressed: () => Favorites.instance.toggle(item),
+                          style: IconButton.styleFrom(
+                            backgroundColor: saved
+                                ? context.appAccent.withValues(alpha: 0.92)
+                                : context.appSurface.withValues(alpha: 0.9),
+                            foregroundColor: saved
+                                ? context.appOnAccent
+                                : context.appOnSurface,
+                          ),
+                          icon: Icon(
+                            saved
+                                ? PhosphorIcons.heart(PhosphorIconsStyle.fill)
+                                : PhosphorIcons.heart(),
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -108,12 +136,12 @@ class DetailScreen extends StatelessWidget {
                     const SizedBox(height: 10),
                     Row(
                       children: [
-                        _iconLabel(context, Symbols.star_rounded,
+                        _iconLabel(context, PhosphorIcons.star(),
                             item.rating.toStringAsFixed(1)),
                         const SizedBox(width: 14),
                         if (item.releaseDate.isNotEmpty)
                           _iconLabel(
-                              context, Symbols.event_rounded, item.releaseDate),
+                              context, PhosphorIcons.calendar(), item.releaseDate),
                       ],
                     ),
                     const SizedBox(height: 20),
@@ -189,7 +217,7 @@ class DetailScreen extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
           ),
         ),
-        icon: const Icon(Symbols.play_arrow_rounded, size: 30),
+        icon: Icon(PhosphorIcons.play(), size: 30),
         label: Text(
           'Play Now',
           style: context.appTextTheme.titleMedium?.copyWith(
@@ -222,7 +250,7 @@ class DetailScreen extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(Symbols.upcoming_rounded, size: 24, color: context.appAccent),
+          Icon(PhosphorIcons.calendarPlus(), size: 24, color: context.appAccent),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -253,7 +281,7 @@ class DetailScreen extends StatelessWidget {
       child: SizedBox(
         height: 180,
         child: item.posterUrl.isEmpty
-            ? Icon(Symbols.local_movies_rounded,
+            ? Icon(PhosphorIcons.filmSlate(),
                 size: 64, color: context.appOnSurfaceVariant)
             : Image.network(item.posterUrl, fit: BoxFit.contain),
       ),
@@ -297,7 +325,7 @@ class _SourceButton extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(Symbols.play_circle_rounded,
+            Icon(PhosphorIcons.playCircle(),
                 size: 22, color: context.appAccent),
             const SizedBox(width: 12),
             Expanded(
@@ -308,7 +336,7 @@ class _SourceButton extends StatelessWidget {
                 ),
               ),
             ),
-            Icon(Symbols.chevron_right_rounded,
+            Icon(PhosphorIcons.caretRight(),
                 size: 16, color: context.appAccent),
           ],
         ),

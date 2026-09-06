@@ -26,7 +26,7 @@ class AppColors {
 
   // ── Runtime brightness + accent flags ─────────────────────────────
   static bool _isDark = false;
-  static AccentOption _accent = AccentOption.ocean;
+  static AccentOption _accent = AccentOption.crimson;
 
   static void setThemeBrightness(Brightness b) =>
       _isDark = b == Brightness.dark;
@@ -74,6 +74,19 @@ class AppAccent {
 
 /// User-selectable accent colors, each defined for light and dark mode.
 enum AccentOption {
+  crimson(
+    'Crimson',
+    light: AppAccent(
+      accent: Color(0xFFC1121F),
+      soft: Color(0xFFFBE7E8),
+      onAccent: Color(0xFFFFFFFF),
+    ),
+    dark: AppAccent(
+      accent: Color(0xFFE50914),
+      soft: Color(0xFF331013),
+      onAccent: Color(0xFFFFFFFF),
+    ),
+  ),
   ocean(
     'Ocean',
     light: AppAccent(
@@ -225,31 +238,30 @@ ThemeData buildDarkTheme() {
 }
 
 TextTheme buildAppTextTheme(TextTheme base) {
-  final serif = GoogleFonts.newsreaderTextTheme(base);
   final sans = GoogleFonts.instrumentSansTextTheme(base);
 
   return sans.copyWith(
-    displayLarge: serif.displayLarge?.copyWith(
-      fontSize: 46,
-      fontWeight: FontWeight.w500,
-      height: 1.05,
-      letterSpacing: -0.03,
-    ),
-    displayMedium: serif.displayMedium?.copyWith(
-      fontSize: 36,
-      fontWeight: FontWeight.w500,
-      height: 1.05,
-      letterSpacing: -0.03,
-    ),
-    headlineMedium: serif.headlineMedium?.copyWith(
-      fontSize: 24,
-      fontWeight: FontWeight.w600,
-      height: 1.15,
+    displayLarge: sans.displayLarge?.copyWith(
+      fontSize: 40,
+      fontWeight: FontWeight.w800,
+      height: 1.02,
       letterSpacing: -0.02,
+    ),
+    displayMedium: sans.displayMedium?.copyWith(
+      fontSize: 32,
+      fontWeight: FontWeight.w700,
+      height: 1.05,
+      letterSpacing: -0.02,
+    ),
+    headlineMedium: sans.headlineMedium?.copyWith(
+      fontSize: 23,
+      fontWeight: FontWeight.w700,
+      height: 1.1,
+      letterSpacing: -0.01,
     ),
     titleLarge: sans.titleLarge?.copyWith(
       fontSize: 19,
-      fontWeight: FontWeight.w600,
+      fontWeight: FontWeight.w700,
       height: 1.2,
       letterSpacing: -0.01,
     ),
