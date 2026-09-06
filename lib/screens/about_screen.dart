@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:material_symbols_icons/material_symbols_icons.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../theme/app_theme.dart';
@@ -105,7 +105,7 @@ class AboutScreen extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
                     child: Icon(
-                      Symbols.check_circle_rounded,
+                      PhosphorIcons.checkCircle(),
                       size: 17,
                       color: context.appAccent,
                     ),
@@ -139,14 +139,14 @@ class AboutScreen extends StatelessWidget {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _linkText(context, 'GitHub', Symbols.code_rounded, _githubUrl),
+                    _linkText(context, 'GitHub', PhosphorIcons.code(), _githubUrl),
                     Container(
                       width: 1,
                       height: 14,
                       margin: const EdgeInsets.symmetric(horizontal: 13),
                       color: AppColors.cardBorder,
                     ),
-                    _linkText(context, 'Email', Symbols.mail_rounded, 'mailto:$_email'),
+                    _linkText(context, 'Email', PhosphorIcons.envelope(), 'mailto:$_email'),
                   ],
                 ),
               ],

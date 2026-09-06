@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:material_symbols_icons/material_symbols_icons.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
@@ -167,7 +167,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
           children: [
             IconButton(
               onPressed: () => Navigator.pop(context),
-              icon: const Icon(Symbols.arrow_back_rounded, color: Colors.white, size: 26),
+              icon: Icon(PhosphorIcons.arrowLeft(), color: Colors.white, size: 26),
             ),
             const SizedBox(width: 6),
             Expanded(

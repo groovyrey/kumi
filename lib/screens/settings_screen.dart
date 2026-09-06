@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:material_symbols_icons/material_symbols_icons.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
 
 import '../state/app_state.dart';
@@ -43,7 +43,7 @@ class SettingsScreen extends StatelessWidget {
                 ThemeMode.light,
                 'Light',
                 leading: Icon(
-                  Symbols.light_mode_rounded,
+                  PhosphorIcons.sun(),
                   size: 18,
                   color: context.appAccent,
                 ),
@@ -52,7 +52,7 @@ class SettingsScreen extends StatelessWidget {
                 ThemeMode.dark,
                 'Dark',
                 leading: Icon(
-                  Symbols.dark_mode_rounded,
+                  PhosphorIcons.moon(),
                   size: 18,
                   color: context.appAccent,
                 ),
@@ -61,7 +61,7 @@ class SettingsScreen extends StatelessWidget {
                 ThemeMode.system,
                 'System',
                 leading: Icon(
-                  Symbols.brightness_auto_rounded,
+                  PhosphorIcons.monitor(),
                   size: 18,
                   color: context.appAccent,
                 ),

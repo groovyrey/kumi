@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:material_symbols_icons/material_symbols_icons.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../models/genre.dart';
 import '../models/media_item.dart';
@@ -161,7 +161,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
             width: 26,
             height: 26,
             child: Icon(
-              Symbols.search_rounded,
+              PhosphorIcons.magnifyingGlass(),
               size: 20,
               color: context.appAccent,
             ),
@@ -177,7 +177,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
                   ),
                   onPressed: _clearSearch,
                   icon: Icon(
-                    Symbols.close_rounded,
+                    PhosphorIcons.x(),
                     size: 18,
                     color: context.appOnSurfaceVariant,
                   ),
@@ -240,7 +240,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
       value: _genreId,
       hint: 'All categories',
       fieldLeading: Icon(
-        Symbols.category_rounded,
+        PhosphorIcons.squaresFour(),
         size: 20,
         color: context.appAccent,
       ),
@@ -287,7 +287,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
                           ),
                           const SizedBox(width: 2),
                           Icon(
-                            Symbols.chevron_right_rounded,
+                            PhosphorIcons.caretRight(),
                             size: 12,
                             color: context.appAccent,
                           ),
@@ -382,7 +382,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
                       Row(
                         children: [
                           Icon(
-                            Symbols.star_rounded,
+                            PhosphorIcons.star(),
                             size: 16,
                             color: context.appAccent,
                           ),
@@ -396,7 +396,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
                           ),
                           const SizedBox(width: 10),
                           Icon(
-                            Symbols.play_circle_rounded,
+                            PhosphorIcons.playCircle(),
                             size: 16,
                             color: context.appAccent,
                           ),
@@ -427,7 +427,7 @@ class _BrowseScreenState extends State<BrowseScreen> {
       height: 190,
       color: context.appSurfaceVariant,
       child: Icon(
-        Symbols.movie_rounded,
+        PhosphorIcons.filmSlate(),
         size: 40,
         color: context.appOnSurfaceVariant,
       ),
@@ -510,7 +510,7 @@ class _CategoryScreen extends StatelessWidget {
                 children: [
                   IconButton(
                     onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Symbols.arrow_back_rounded),
+                    icon: Icon(PhosphorIcons.arrowLeft()),
                   ),
                   const SizedBox(width: 4),
                   Expanded(

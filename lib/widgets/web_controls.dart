@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:material_symbols_icons/material_symbols_icons.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../theme/app_theme.dart';
 
@@ -193,7 +193,7 @@ class AppDropdown<T> extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Icon(
-              Symbols.expand_more_rounded,
+              PhosphorIcons.caretDown(),
               size: 20,
               color: context.appOnSurfaceVariant,
             ),
@@ -282,7 +282,7 @@ class _AppDropdownSheet<T> extends StatelessWidget {
               ),
             ),
             if (selected)
-              Icon(Symbols.check_rounded, size: 18, color: context.appAccent),
+              Icon(PhosphorIcons.check(), size: 18, color: context.appAccent),
           ],
         ),
       ),

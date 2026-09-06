@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:material_symbols_icons/material_symbols_icons.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../models/media_item.dart';
 import '../models/series_details.dart';
@@ -290,7 +290,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          Symbols.add_rounded,
+                          PhosphorIcons.plus(),
                           size: 18,
                           color: context.appAccent,
                         ),
@@ -333,7 +333,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               clipBehavior: Clip.antiAlias,
               child: row.item.posterUrl.isEmpty
                   ? Icon(
-                      Symbols.local_movies_rounded,
+                      PhosphorIcons.filmSlate(),
                       size: 18,
                       color: context.appOnSurfaceVariant,
                     )
@@ -341,7 +341,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       row.item.posterUrl,
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => Icon(
-                        Symbols.local_movies_rounded,
+                        PhosphorIcons.filmSlate(),
                         size: 18,
                         color: context.appOnSurfaceVariant,
                       ),

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:material_symbols_icons/material_symbols_icons.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../models/media_item.dart';
 import '../screens/detail_screen.dart';
@@ -119,7 +119,7 @@ class _PosterRailState extends State<PosterRail> {
       child = IconButton(
         tooltip: 'Retry',
         onPressed: _loadMore,
-        icon: Icon(Symbols.refresh_rounded,
+        icon: Icon(PhosphorIcons.arrowsClockwise(),
             size: 22, color: Theme.of(context).colorScheme.onSurfaceVariant),
       );
     } else if (_items.isEmpty) {
