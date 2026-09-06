@@ -520,9 +520,9 @@ class _ScreenTimeCard extends StatelessWidget {
           const SizedBox(height: 14),
           Row(
             children: [
-              _Stat(context, 'Today', _fmt(today)),
-              _Stat(context, 'This week', _fmt(total)),
-              _Stat(context, 'Daily average', _fmt(average)),
+              _stat(context, 'Today', _fmt(today)),
+              _stat(context, 'This week', _fmt(total)),
+              _stat(context, 'Daily average', _fmt(average)),
             ],
           ),
           const SizedBox(height: 16),
@@ -585,7 +585,7 @@ class _ScreenTimeCard extends StatelessWidget {
   String _weekdayLetter(DateTime day) =>
       const ['M', 'T', 'W', 'T', 'F', 'S', 'S'][day.weekday - 1];
 
-  Widget _Stat(
+  Widget _stat(
     BuildContext context,
     String label,
     String value, {
@@ -775,7 +775,7 @@ class _ContinueCard extends StatelessWidget {
                           width: 2,
                         ),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         PhosphorIcons.play(),
                         color: Colors.white,
                         size: 26,
