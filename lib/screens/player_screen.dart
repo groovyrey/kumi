@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -35,9 +34,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
   bool _loading = true;
   bool _controlsVisible = true;
   Timer? _hideTimer;
-  Timer? _auditTimer;
-  String? _auditReport;
-  bool _auditOpen = true;
 
   @override
   void initState() {
@@ -48,64 +44,14 @@ class _PlayerScreenState extends State<PlayerScreen> {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     _controller = _buildController(_url());
     _scheduleHide();
-    if (AppConfig.kDebugAdAudit) {
-      unawaited(_runAudit());
-      _auditTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-        unawaited(_runAudit());
-      });
-    }
   }
 
   @override
   void dispose() {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     _hideTimer?.cancel();
-    _auditTimer?.cancel();
     EmbedAdGuard.detach();
     super.dispose();
-  }
-
-  Future<void> _runAudit() async {
-    final raw = await EmbedAdGuard.audit(_controller);
-    if (!mounted || raw == null) return;
-    final report = _formatAudit(raw);
-    if (report == _auditReport) return;
-    setState(() => _auditReport = report);
-  }
-
-  String _formatAudit(String raw) {
-    try {
-      final decoded = jsonDecode(raw);
-      if (decoded is! List) {
-        return raw.length > 300 ? raw.substring(0, 300) : raw;
-      }
-      final lines = <String>[];
-      for (final item in decoded) {
-        if (item is! Map) continue;
-        final id = item['id'] ?? '';
-        final cls = item['cls'] ?? '';
-        final src = item['src'] ?? '';
-        final z = item['z'];
-        final w = item['w'] ?? 0;
-        final h = item['h'] ?? 0;
-        final text = item['text'] ?? '';
-        final summary = [
-          '${item['tag']}',
-          if (id.toString().isNotEmpty) '#$id',
-          if (cls.toString().isNotEmpty) '.$cls',
-          if (src.toString().isNotEmpty) '->$src',
-          'z=${z ?? 'auto'}',
-          '${item['pos']} $w x $h',
-        ].join(' ');
-        lines.add(summary);
-        if (text.toString().isNotEmpty) {
-          lines.add('   "$text"');
-        }
-      }
-      return lines.join('\n');
-    } catch (_) {
-      return raw.length > 300 ? raw.substring(0, 300) : raw;
-    }
   }
 
   String _url() {
@@ -197,87 +143,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   child: _topBar(context),
                 ),
               ),
-              if (AppConfig.kDebugAdAudit && _auditOpen && _auditReport != null)
-                Positioned(
-                  top: 64,
-                  right: 12,
-                  child: Container(
-                    width: 280,
-                    constraints: const BoxConstraints(maxHeight: 300),
-                    padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.78),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: Colors.white24),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(
-                              PhosphorIcons.warningCircle(),
-                              color: Colors.amber.shade400,
-                              size: 16,
-                            ),
-                            const SizedBox(width: 6),
-                            const Expanded(
-                              child: Text(
-                                'AD AUDIT - top overlays',
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ),
-                            IconButton(
-                              onPressed: () async {
-                                await Clipboard.setData(ClipboardData(
-                                    text: _auditReport ?? ''));
-                              },
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(
-                                  minWidth: 32, minHeight: 32),
-                              icon: Icon(
-                                PhosphorIcons.copySimple(),
-                                color: Colors.white70,
-                                size: 16,
-                              ),
-                            ),
-                            IconButton(
-                              onPressed: () =>
-                                  setState(() => _auditOpen = false),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(
-                                  minWidth: 32, minHeight: 32),
-                              icon: Icon(
-                                PhosphorIcons.x(),
-                                color: Colors.white70,
-                                size: 16,
-                              ),
-                            ),
-                          ],
-                        ),
-                        Flexible(
-                          child: SingleChildScrollView(
-                            child: Text(
-                              _auditReport!,
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 10,
-                                height: 1.4,
-                                fontFamily: 'monospace',
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
             ],
           ),
         ),

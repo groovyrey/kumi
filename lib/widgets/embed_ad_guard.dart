@@ -149,63 +149,9 @@ class EmbedAdGuard {
 
   static Timer? _ticker;
 
-  /// Diagnostic audit: lists the highest-z stacked overlay elements that
-  /// survive the stripper, so leftover ad layers can be identified by their
-  /// tag/class/z-index/size and the stripper tightened precisely. Returns a
-  /// JSON string (decoded on the Dart side). Not used in production.
-  static const String auditScript = r'''
-(function () {
-  'use strict';
-  var out = [];
-  var all = document.querySelectorAll('body *');
-  for (var i = 0; i < all.length; i++) {
-    var el = all[i];
-    if (el === document.body || el === document.documentElement) continue;
-    var cs = getComputedStyle(el);
-    if (cs.position !== 'absolute' && cs.position !== 'fixed') continue;
-    if (el.querySelector('video, audio')) continue;
-    var r = el.getBoundingClientRect();
-    if (r.width < 1 || r.height < 1) continue;
-    var z = parseInt(cs.zIndex, 10);
-    var srcHost = '';
-    if (el.tagName === 'IFRAME') {
-      try {
-        srcHost = new URL(el.getAttribute('src') || '', location.href).host;
-      } catch (e) {
-        srcHost = el.getAttribute('src') || '';
-      }
-    }
-    out.push({
-      tag: el.tagName,
-      id: (el.id || '').slice(0, 40),
-      cls: (typeof el.className === 'string' ? el.className : '').slice(0, 60),
-      src: srcHost,
-      z: isFinite(z) ? z : null,
-      pos: cs.position,
-      w: Math.round(r.width),
-      h: Math.round(r.height),
-      text: (el.innerText || '').trim().slice(0, 48)
-    });
-  }
-  out.sort(function (a, b) {
-    var za = a.z || 0, zb = b.z || 0;
-    if (zb !== za) return zb - za;
-    return Math.max(b.w * b.h, 0) - Math.max(a.w * a.h, 0);
-  });
-  return JSON.stringify(out.slice(0, 12));
-})();
-''';
-
   /// Runs the stripper immediately in [controller] (page start/finish hook).
   static void strip(WebViewController controller) {
     unawaited(controller.runJavaScript(stripperScript));
-  }
-
-  /// Runs the diagnostic audit and returns the JSON summary as a Dart string,
-  /// or null when the platform did not return one.
-  static Future<String?> audit(WebViewController controller) async {
-    final result = await controller.runJavaScriptReturningResult(auditScript);
-    return result is String ? result : null;
   }
 
   /// Starts a periodic backstop that re-runs the stripper inside [controller].
