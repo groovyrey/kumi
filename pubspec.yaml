@@ -1,5 +1,5 @@
 name: kumi
-description: "Kumi - a fresh Flutter starter app."
+description: "Kumi - a streaming app for movies and TV, powered by TMDb."
 publish_to: 'none'
 version: 1.4.7+12
 
