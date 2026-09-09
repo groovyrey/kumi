@@ -231,12 +231,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
       }
     }
     if (match == null) return;
-    setState(() => _activeSubtitleUrl = match.url);
+    final found = match;
+    setState(() => _activeSubtitleUrl = found.url);
     unawaited(player.setSubtitleTrack(
       SubtitleTrack.uri(
-        match.url,
-        title: match.label,
-        language: match.label,
+        found.url,
+        title: found.label,
+        language: found.label,
       ),
     ));
   }

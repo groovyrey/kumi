@@ -26,10 +26,23 @@ enum QualityPreference {
 }
 
 /// Which native direct-file provider to try first.
-enum SourceOrder { auto('Auto'), vidlink('VidLink'), vidlove('111Movies') }
+enum SourceOrder {
+  auto('Auto'),
+  vidlink('VidLink'),
+  vidlove('111Movies');
+
+  const SourceOrder(this.label);
+  final String label;
+}
 
 /// Which release channel the update banner listens to.
-enum UpdateChannel { stable('Stable'), beta('Beta') }
+enum UpdateChannel {
+  stable('Stable'),
+  beta('Beta');
+
+  const UpdateChannel(this.label);
+  final String label;
+}
 
 class AppState extends ChangeNotifier {
   static const _themeModeKey = 'theme_mode';
