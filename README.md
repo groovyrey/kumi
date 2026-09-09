@@ -1,8 +1,9 @@
 # Kumi
 
 A Flutter streaming app for movies and TV, built and released by GitHub
-Actions. Content comes from TMDb; playback runs inside an embed player with a
-built-in ad-layer guard.
+Actions. Content comes from TMDb; playback runs natively through the
+resolver-protected direct sources (VidLink, 111Movies) and falls back to an
+embed player with a built-in ad-layer guard.
 
 ## Features
 
@@ -10,7 +11,9 @@ built-in ad-layer guard.
   (popular, on the air, trending), search, and genre filters
 - Detail pages with poster, backdrop, cast, and runtime; series pages with
   season/episode lists
-- Streaming via configurable embed sources (`lib/config.dart`); the player
+- Streaming natively via direct-file sources (VidLink MP4, 111Movies / VidLove
+  HLS) resolved through a Cloudflare Worker (`worker8652`); falls back to
+  configurable embed sources when nothing direct is available. The player
   strips known ad layers and resumes where you left off
 - My List favourites, watch history with progress, and a schedule screen
 - Version checker that compares the installed build against the latest GitHub
@@ -33,11 +36,11 @@ built-in ad-layer guard.
 ```
 lib/
   main.dart                  entry + splash gate
-  config.dart                TMDb keys and embed source templates
+  config.dart                TMDb keys, resolver worker, and source lists
   theme/app_theme.dart       palette and typography
   state/app_state.dart       theme mode + accent persistence
   models/                   media item, genre, series details
-  services/                 TMDb, favorites, watch history, version checker, screen time
+  services/                 TMDb, resolver, favorites, watch history, version checker, screen time
   screens/                  app shell, home, browse, detail, my list, player,
                             schedule, settings, about
   widgets/                  embed ad guard, poster rails, media grid, web controls, kumi mark

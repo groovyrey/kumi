@@ -1,7 +1,7 @@
 name: kumi
 description: "Kumi - a streaming app for movies and TV, powered by TMDb."
 publish_to: 'none'
-version: 1.4.7+12
+version: 1.5.0+13
 
 environment:
   sdk: ^3.8.1
@@ -20,6 +20,7 @@ dependencies:
   url_launcher: ^6.3.1
   package_info_plus: ^10.2.1
   phosphor_flutter: ^2.0.2
+  video_player: ^2.9.2
 
 dev_dependencies:
   flutter_test:

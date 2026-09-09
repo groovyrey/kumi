@@ -3,16 +3,21 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:video_player/video_player.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 
 import '../config.dart';
+import '../services/resolver_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/embed_ad_guard.dart';
 
-/// A Netflix-style immersive full-screen player. The CineSrc provider is
-/// autoplayed on entry and the in-page ad layer is stripped by the guard.
+/// Immersive full-screen player. Native direct-file sources (VidLink,
+/// 111Movies) are resolved through the worker and played with the platform
+/// video player. When no native source resolves for a title, playback falls
+/// back to the CineSrc embed in the WebView with the ad layer stripped by the
+/// guard.
 class PlayerScreen extends StatefulWidget {
   const PlayerScreen({
     super.key,
@@ -30,20 +35,22 @@ class PlayerScreen extends StatefulWidget {
 }
 
 class _PlayerScreenState extends State<PlayerScreen> {
-  late WebViewController _controller;
-  bool _loading = true;
+  final ResolverService _resolver = ResolverService();
+
+  _PlayerMode _mode = _PlayerMode.loading;
+  VideoPlayerController? _video;
+  WebViewController? _web;
+  String _nativeLabel = '';
+  String _fallbackNotice = '';
+  bool _nativeFailed = false;
   bool _controlsVisible = true;
   Timer? _hideTimer;
 
   @override
   void initState() {
     super.initState();
-    // Immersive: hide the Android system bars while watching, so the embed
-    // player gets the whole screen and its controls (settings, share) are
-    // fully reachable.
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    _controller = _buildController(_url());
-    _scheduleHide();
+    _start();
   }
 
   @override
@@ -51,12 +58,78 @@ class _PlayerScreenState extends State<PlayerScreen> {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     _hideTimer?.cancel();
     EmbedAdGuard.detach();
+    final video = _video;
+    _video = null;
+    if (video != null) unawaited(video.dispose());
     super.dispose();
   }
 
-  String _url() {
+  String get _type => widget.media == 'tvplay' ? 'tv' : 'movie';
+
+  String _embedUrl() {
     final src = EmbedSources.sources.first;
     return src.$2(id: widget.id, media: widget.media);
+  }
+
+  /// Native-first: try every direct-file provider, then fall back to embed.
+  Future<void> _start() async {
+    for (final provider in NativeSources.providers) {
+      try {
+        final source = await _resolver.resolve(
+          provider: provider.name,
+          type: _type,
+          id: widget.id,
+        );
+        if (!mounted) return;
+        await _playNative(source, provider.label);
+        return;
+      } catch (_) {
+        // Try the next provider.
+      }
+    }
+    if (!mounted) return;
+    _fallbackToEmbed();
+  }
+
+  Future<void> _playNative(ResolvedSource source, String label) async {
+    final video = VideoPlayerController.networkUrl(
+      Uri.parse(source.playUrl),
+    );
+    setState(() {
+      _mode = _PlayerMode.loading;
+      _nativeLabel = label;
+      _nativeFailed = false;
+    });
+    try {
+      await video.initialize();
+      if (!mounted) {
+        video.dispose();
+        return;
+      }
+      setState(() {
+        _video = video;
+        _mode = _PlayerMode.native;
+      });
+      unawaited(video.play());
+      _scheduleHide();
+    } catch (_) {
+      if (!mounted) return;
+      video.dispose();
+      _fallbackToEmbed();
+    }
+  }
+
+  void _fallbackToEmbed() {
+    if (!mounted) return;
+    final controller = _buildController(_embedUrl());
+    setState(() {
+      _web = controller;
+      _mode = _PlayerMode.embed;
+      _nativeFailed = true;
+      _fallbackNotice =
+          'No direct source available for this title — playing embed source instead.';
+    });
+    _scheduleHide();
   }
 
   WebViewController _buildController(String url) {
@@ -77,14 +150,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: (_) {
-            setState(() => _loading = true);
             EmbedAdGuard.strip(controller);
           },
           onPageFinished: (_) {
-            setState(() => _loading = false);
             EmbedAdGuard.strip(controller);
           },
-          onWebResourceError: (_) => setState(() => _loading = false),
+          onWebResourceError: (_) {},
           onNavigationRequest: EmbedAdGuard.guardNavigation,
         ),
       );
@@ -110,8 +181,24 @@ class _PlayerScreenState extends State<PlayerScreen> {
   void _toggleControls() {
     setState(() {
       _controlsVisible = !_controlsVisible;
-      if (_controlsVisible) _scheduleHide();
+      _scheduleHide();
     });
+  }
+
+  Widget _videoBody() {
+    final video = _video;
+    final val = video?.value;
+    if (video == null || val == null || !val.isInitialized) {
+      return const Center(
+        child: CircularProgressIndicator(color: Colors.white),
+      );
+    }
+    return Center(
+      child: AspectRatio(
+        aspectRatio: val.aspectRatio,
+        child: VideoPlayer(video),
+      ),
+    );
   }
 
   @override
@@ -124,16 +211,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
         body: SafeArea(
           child: Stack(
             children: [
-              Positioned.fill(
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: _toggleControls,
-                  child: WebViewWidget(controller: _controller),
-                ),
-              ),
-              if (_loading)
-                const Center(
-                  child: CircularProgressIndicator(color: Colors.white),
+              Positioned.fill(child: _buildPlayerArea()),
+              if (_nativeFailed)
+                Positioned(
+                  top: 10,
+                  left: 12,
+                  right: 12,
+                  child: _fallbackBanner(context),
                 ),
               IgnorePointer(
                 ignoring: !_controlsVisible,
@@ -150,7 +234,57 @@ class _PlayerScreenState extends State<PlayerScreen> {
     );
   }
 
+  Widget _buildPlayerArea() {
+    switch (_mode) {
+      case _PlayerMode.loading:
+        return const Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        );
+      case _PlayerMode.native:
+        return _videoBody();
+      case _PlayerMode.embed:
+        final web = _web;
+        if (web == null) {
+          return const Center(
+            child: CircularProgressIndicator(color: Colors.white),
+          );
+        }
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: _toggleControls,
+          child: WebViewWidget(controller: web),
+        );
+    }
+  }
+
+  Widget _fallbackBanner(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Icon(PhosphorIcons.info(), size: 16, color: context.appAccent),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              _fallbackNotice,
+              style: context.appTextTheme.bodySmall?.copyWith(
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _topBar(BuildContext context) {
+    final subtitle = _mode == _PlayerMode.native
+        ? 'Playing via $_nativeLabel'
+        : null;
     return Align(
       alignment: Alignment.topCenter,
       child: Container(
@@ -174,14 +308,28 @@ class _PlayerScreenState extends State<PlayerScreen> {
             ),
             const SizedBox(width: 6),
             Expanded(
-              child: Text(
-                widget.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: context.appTextTheme.titleLarge?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.appTextTheme.titleLarge?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (subtitle != null)
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.appTextTheme.bodySmall?.copyWith(
+                        color: Colors.white70,
+                      ),
+                    ),
+                ],
               ),
             ),
           ],
@@ -190,3 +338,4 @@ class _PlayerScreenState extends State<PlayerScreen> {
     );
   }
 }
+enum _PlayerMode { loading, native, embed }
