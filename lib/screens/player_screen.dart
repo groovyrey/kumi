@@ -698,7 +698,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
             initialData: player.state.track,
             builder: (context, snapTrack) {
               final tracks = snapTracks.data ?? player.state.tracks;
-              final selected = snapTrack.data?.subtitle?.id;
+              final selected = snapTrack.data?.subtitle.id;
               final off = SubtitleTrack.no();
               final items = <({SubtitleTrack track, String label})>[
                 (track: off, label: 'Off'),
@@ -765,7 +765,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
             initialData: player.state.track,
             builder: (context, snapTrack) {
               final tracks = snapTracks.data ?? player.state.tracks;
-              final selected = snapTrack.data?.audio;
+              final selected = snapTrack.data?.audio.id;
               return SafeArea(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -786,17 +786,17 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     for (final audio in tracks.audio)
                       ListTile(
                         title: Text(
-                          audio,
+                          audio.title ?? audio.id,
                           style: context.appTextTheme.bodyMedium?.copyWith(
                             color: context.appOnSurface,
                           ),
                         ),
-                        trailing: audio == selected
+                        trailing: audio.id == selected
                             ? Icon(PhosphorIcons.check(), color: context.appAccent)
                             : null,
                         onTap: () {
                           Navigator.pop(sheetContext);
-                          unawaited(player.setAudioTrack(audio));
+                          unawaited(player.setAudioTrack(audio.id));
                         },
                       ),
                     const SizedBox(height: 8),
