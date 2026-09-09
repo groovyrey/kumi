@@ -435,52 +435,69 @@ class _PlayerScreenState extends State<PlayerScreen> {
     ];
     showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       backgroundColor: context.appSurface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Switch source',
-                  style: context.appTextTheme.titleMedium?.copyWith(
-                    color: context.appOnSurface,
-                    fontWeight: FontWeight.w600,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(sheetContext).size.height * 0.65,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Switch source',
+                    style: context.appTextTheme.titleMedium?.copyWith(
+                      color: context.appOnSurface,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
-            ),
-            for (final item in items)
-              ListTile(
-                leading: Icon(
-                  item.current
-                      ? PhosphorIcons.checkCircle()
-                      : PhosphorIcons.playCircle(),
-                  color: item.current
-                      ? context.appAccent
-                      : context.appOnSurfaceVariant,
+              Flexible(
+                child: ListView(
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.only(bottom: 4),
+                  children: [
+                    for (final item in items)
+                      ListTile(
+                        leading: Icon(
+                          item.current
+                              ? PhosphorIcons.checkCircle()
+                              : PhosphorIcons.playCircle(),
+                          color: item.current
+                              ? context.appAccent
+                              : context.appOnSurfaceVariant,
+                        ),
+                        title: Text(
+                          item.label,
+                          style: context.appTextTheme.bodyMedium?.copyWith(
+                            color: context.appOnSurface,
+                          ),
+                        ),
+                        trailing: item.current
+                            ? Icon(PhosphorIcons.check(),
+                                color: context.appAccent)
+                            : null,
+                        onTap: () {
+                          Navigator.pop(sheetContext);
+                          if (!item.current) _switchSource(item.name);
+                        },
+                      ),
+                    const SizedBox(height: 8),
+                  ],
                 ),
-                title: Text(
-                  item.label,
-                  style: context.appTextTheme.bodyMedium?.copyWith(
-                    color: context.appOnSurface,
-                  ),
-                ),
-                trailing:
-                    item.current ? Icon(PhosphorIcons.check(), color: context.appAccent) : null,
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  if (!item.current) _switchSource(item.name);
-                },
               ),
-            const SizedBox(height: 8),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -858,62 +875,79 @@ class _PlayerScreenState extends State<PlayerScreen> {
     ];
     showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       backgroundColor: context.appSurface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Subtitles',
-                  style: context.appTextTheme.titleMedium?.copyWith(
-                    color: context.appOnSurface,
-                    fontWeight: FontWeight.w600,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(sheetContext).size.height * 0.65,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Subtitles',
+                    style: context.appTextTheme.titleMedium?.copyWith(
+                      color: context.appOnSurface,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),
-            ),
-            for (final item in items)
-              ListTile(
-                title: Text(
-                  item.label,
-                  style: context.appTextTheme.bodyMedium?.copyWith(
-                    color: context.appOnSurface,
-                  ),
-                ),
-                trailing: _activeSubtitleUrl == null && item.isOff
-                    ? Icon(PhosphorIcons.check(), color: context.appAccent)
-                    : (item.sub != null &&
-                            item.sub!.url == _activeSubtitleUrl)
-                        ? Icon(PhosphorIcons.check(),
-                            color: context.appAccent)
-                        : null,
-                onTap: () {
-                  Navigator.pop(sheetContext);
-                  final sub = item.sub;
-                  if (sub == null) {
-                    setState(() => _activeSubtitleUrl = null);
-                    unawaited(player.setSubtitleTrack(SubtitleTrack.no()));
-                  } else {
-                    setState(() => _activeSubtitleUrl = sub.url);
-                    unawaited(player.setSubtitleTrack(
-                      SubtitleTrack.uri(
-                        sub.url,
-                        title: sub.label,
-                        language: sub.label,
+              Flexible(
+                child: ListView(
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.only(bottom: 4),
+                  children: [
+                    for (final item in items)
+                      ListTile(
+                        title: Text(
+                          item.label,
+                          style: context.appTextTheme.bodyMedium?.copyWith(
+                            color: context.appOnSurface,
+                          ),
+                        ),
+                        trailing: _activeSubtitleUrl == null && item.isOff
+                            ? Icon(PhosphorIcons.check(),
+                                color: context.appAccent)
+                            : (item.sub != null &&
+                                    item.sub!.url == _activeSubtitleUrl)
+                                ? Icon(PhosphorIcons.check(),
+                                    color: context.appAccent)
+                                : null,
+                        onTap: () {
+                          Navigator.pop(sheetContext);
+                          final sub = item.sub;
+                          if (sub == null) {
+                            setState(() => _activeSubtitleUrl = null);
+                            unawaited(
+                                player.setSubtitleTrack(SubtitleTrack.no()));
+                          } else {
+                            setState(() => _activeSubtitleUrl = sub.url);
+                            unawaited(player.setSubtitleTrack(
+                              SubtitleTrack.uri(
+                                sub.url,
+                                title: sub.label,
+                                language: sub.label,
+                              ),
+                            ));
+                          }
+                        },
                       ),
-                    ));
-                  }
-                },
+                    const SizedBox(height: 8),
+                  ],
+                ),
               ),
-            const SizedBox(height: 8),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -922,6 +956,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   void _showAudioSheet(BuildContext context, Player player) {
     showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       backgroundColor: context.appSurface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
@@ -941,40 +976,56 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   if (a.id != 'auto' && a.id != 'no') a,
               ];
               return SafeArea(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Audio',
-                          style: context.appTextTheme.titleMedium?.copyWith(
-                            color: context.appOnSurface,
-                            fontWeight: FontWeight.w600,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(sheetContext).size.height * 0.65,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Audio',
+                            style: context.appTextTheme.titleMedium?.copyWith(
+                              color: context.appOnSurface,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    for (final audio in realAudio)
-                      ListTile(
-                        title: Text(
-                          audio.title ?? audio.id,
-                          style: context.appTextTheme.bodyMedium?.copyWith(
-                            color: context.appOnSurface,
-                          ),
+                      Flexible(
+                        child: ListView(
+                          shrinkWrap: true,
+                          padding: const EdgeInsets.only(bottom: 4),
+                          children: [
+                            for (final audio in realAudio)
+                              ListTile(
+                                title: Text(
+                                  audio.title ?? audio.id,
+                                  style: context.appTextTheme.bodyMedium
+                                      ?.copyWith(
+                                    color: context.appOnSurface,
+                                  ),
+                                ),
+                                trailing: audio.id == selectedId
+                                    ? Icon(PhosphorIcons.check(),
+                                        color: context.appAccent)
+                                    : null,
+                                onTap: () {
+                                  Navigator.pop(sheetContext);
+                                  unawaited(player.setAudioTrack(audio));
+                                },
+                              ),
+                            const SizedBox(height: 8),
+                          ],
                         ),
-                        trailing: audio.id == selectedId
-                            ? Icon(PhosphorIcons.check(), color: context.appAccent)
-                            : null,
-                        onTap: () {
-                          Navigator.pop(sheetContext);
-                          unawaited(player.setAudioTrack(audio));
-                        },
                       ),
-                    const SizedBox(height: 8),
-                  ],
+                    ],
+                  ),
                 ),
               );
             },
