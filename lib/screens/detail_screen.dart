@@ -1,17 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
+import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 
 import '../config.dart';
 import '../models/media_item.dart';
 import '../services/favorites.dart';
+import '../services/tmdb_service.dart';
 import '../services/watch_history.dart';
 import '../theme/app_theme.dart';
 import 'player_screen.dart';
 
-class DetailScreen extends StatelessWidget {
+/// Title page: a hero banner that plays the trailer in a muted loop when one
+/// exists (falling back to the backdrop image), then rating, the play button
+/// and the watch sources.
+class DetailScreen extends StatefulWidget {
   const DetailScreen({super.key, required this.item});
 
   final MediaItem item;
+
+  @override
+  State<DetailScreen> createState() => _DetailScreenState();
+}
+
+class _DetailScreenState extends State<DetailScreen> {
+  final TmdbService _tmdb = TmdbService();
+
+  String? _trailerKey;
+
+  MediaItem get item => widget.item;
 
   String get _mediaParam => item.mediaType == 'tv' ? 'tvplay' : 'movie';
 
@@ -24,6 +43,23 @@ class DetailScreen extends StatelessWidget {
     if (date == null) return false;
     final now = DateTime.now();
     return date.isAfter(DateTime(now.year, now.month, now.day));
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTrailer();
+  }
+
+  Future<void> _loadTrailer() async {
+    String? key;
+    try {
+      key = await _tmdb.trailerKey(item.id, item.mediaType);
+    } catch (_) {
+      key = null;
+    }
+    if (!mounted) return;
+    setState(() => _trailerKey = key);
   }
 
   void _play(BuildContext context, {String? provider, bool forceEmbed = false}) {
@@ -56,14 +92,9 @@ class DetailScreen extends StatelessWidget {
                     height: 240,
                     width: double.infinity,
                     color: context.appSurfaceVariant,
-                    child: item.backdropPath == null ||
-                            item.backdropPath!.isEmpty
-                        ? _posterOnly(context)
-                        : Image.network(
-                            '${AppConfig.tmdbImageBase}${item.backdropPath}',
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => _posterOnly(context),
-                          ),
+                    child: _trailerKey != null
+                        ? _TrailerBackground(videoKey: _trailerKey!)
+                        : _backdrop(context),
                   ),
                   Positioned(
                     bottom: 0,
@@ -122,6 +153,12 @@ class DetailScreen extends StatelessWidget {
                       },
                     ),
                   ),
+                  if (_trailerKey != null)
+                    Positioned(
+                      right: 12,
+                      bottom: 18,
+                      child: _TrailerChip(videoKey: _trailerKey!),
+                    ),
                 ],
               ),
               Padding(
@@ -201,7 +238,7 @@ class DetailScreen extends StatelessWidget {
                           padding: const EdgeInsets.only(bottom: 10),
                           child: _SourceButton(
                             label: provider.label,
-                            hint: 'Direct playback',
+                            hint: 'Kumi player',
                             onTap: () =>
                                 _play(context, provider: provider.name),
                           ),
@@ -214,6 +251,17 @@ class DetailScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _backdrop(BuildContext context) {
+    if (item.backdropPath == null || item.backdropPath!.isEmpty) {
+      return _posterOnly(context);
+    }
+    return Image.network(
+      '${AppConfig.tmdbImageBase}${item.backdropPath}',
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => _posterOnly(context),
     );
   }
 
@@ -308,6 +356,103 @@ class DetailScreen extends StatelessWidget {
         const SizedBox(width: 5),
         Text(text, style: context.appTextTheme.bodyMedium),
       ],
+    );
+  }
+}
+
+/// Muted, looping YouTube trailer rendered behind the title hero.
+class _TrailerBackground extends StatefulWidget {
+  const _TrailerBackground({required this.videoKey});
+
+  final String videoKey;
+
+  @override
+  State<_TrailerBackground> createState() => _TrailerBackgroundState();
+}
+
+class _TrailerBackgroundState extends State<_TrailerBackground> {
+  late final WebViewController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    late final PlatformWebViewControllerCreationParams params;
+    if (WebViewPlatform.instance is WebKitWebViewPlatform) {
+      params = WebKitWebViewControllerCreationParams(
+        allowsInlineMediaPlayback: true,
+        mediaTypesRequiringUserAction: const <PlaybackMediaTypes>{},
+      );
+    } else {
+      params = const PlatformWebViewControllerCreationParams();
+    }
+    final controller = WebViewController.fromPlatformCreationParams(params);
+    controller
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(const Color(0xFF000000))
+      ..setNavigationDelegate(
+        NavigationDelegate(
+          onNavigationRequest: (request) =>
+              request.url == _embedUrl() ? NavigationDecision.navigate : NavigationDecision.prevent,
+        ),
+      );
+    if (controller.platform is AndroidWebViewController) {
+      (controller.platform as AndroidWebViewController)
+          .setMediaPlaybackRequiresUserGesture(false);
+    }
+    controller.loadRequest(Uri.parse(_embedUrl()));
+    _controller = controller;
+  }
+
+  String _embedUrl() {
+    final key = widget.videoKey;
+    return 'https://www.youtube-nocookie.com/embed/$key'
+        '?autoplay=1&mute=1&loop=1&playlist=$key'
+        '&controls=0&modestbranding=1&playsinline=1'
+        '&rel=0&iv_load_policy=3';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return WebViewWidget(controller: _controller);
+  }
+}
+
+/// Small pill that opens the trailer on YouTube at full volume.
+class _TrailerChip extends StatelessWidget {
+  const _TrailerChip({required this.videoKey});
+
+  final String videoKey;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () {
+        final uri = Uri.parse('https://www.youtube.com/watch?v=$videoKey');
+        launchUrl(uri, mode: LaunchMode.externalApplication);
+      },
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: context.appSurface.withValues(alpha: 0.9),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: AppColors.cardBorder),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(PhosphorIcons.playCircle(), size: 16, color: context.appAccent),
+            const SizedBox(width: 6),
+            Text(
+              'Trailer',
+              style: context.appTextTheme.labelMedium?.copyWith(
+                color: context.appOnSurface,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

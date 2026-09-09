@@ -92,27 +92,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
         title: Row(
           children: [
             Padding(
-              padding: const EdgeInsets.only(left: 8, right: 4),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Container(
-                    width: 46,
-                    height: 46,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        colors: [
-                          context.appAccent.withValues(alpha: 0.32),
-                          context.appAccent.withValues(alpha: 0.0),
-                        ],
-                        radius: 1.0,
-                      ),
-                    ),
-                  ),
-                  const KumiMark(size: 30),
-                ],
-              ),
+              padding: const EdgeInsets.only(left: 12, right: 4),
+              child: const KumiMark(size: 30),
             ),
             const SizedBox(width: 8),
             Text(

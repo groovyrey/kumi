@@ -142,6 +142,25 @@ class TmdbService {
         query: {'with_genres': '$genreId'},
       );
 
+  /// The first YouTube trailer/teaser key for a title, if the provider has
+  /// one. Used by the detail hero to play the trailer behind the poster.
+  Future<String?> trailerKey(int id, String mediaType) async {
+    final path = mediaType == 'tv' ? '$_tv/$id/videos' : '$_media/$id/videos';
+    final res = await _client.get(_uri(path));
+    if (res.statusCode != 200) return null;
+    final data = jsonDecode(res.body) as Map<String, dynamic>;
+    final results = data['results'] as List? ?? const [];
+    for (final entry in results) {
+      final video = (entry as Map).cast<String, dynamic>();
+      final key = video['key'];
+      final isTrailer =
+          video['site'] == 'YouTube' &&
+          (video['type'] == 'Trailer' || video['type'] == 'Teaser');
+      if (isTrailer && key is String && key.isNotEmpty) return key;
+    }
+    return null;
+  }
+
   // ── First-page shortcuts used by one-shot callers ────────────────────
 
   Future<List<MediaItem>> popularMovies() async =>
