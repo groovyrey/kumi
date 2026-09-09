@@ -19,6 +19,9 @@ class AboutScreen extends StatelessWidget {
   static const _purposeBody = 'Kumi is a no-strings streaming app built for '
       'movie nights: browse the latest films and shows, dive into a title, and '
       'start watching in seconds. No accounts, no ads, no noise.';
+  static const _sourceNote = 'Playback sources are listed even when they '
+      'are temporarily offline. Kumi does not pre-check availability — if a '
+      'source fails to play, it automatically switches to the next working one.';
   static final _features = [
     (
       PhosphorIcons.filmSlate(),
@@ -126,6 +129,26 @@ class AboutScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 34),
+          SurfaceCard(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(PhosphorIcons.info(), size: 18, color: context.appAccent),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    _sourceNote,
+                    style: context.appTextTheme.bodyMedium?.copyWith(
+                      color: context.appOnSurfaceVariant,
+                      height: 1.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 22),
           SurfaceCard(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
             child: Column(
