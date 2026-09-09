@@ -58,6 +58,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   Timer? _hideTimer;
   double? _dragSeconds;
   String? _nativeSourceName;
+  List<SubtitleInfo> _subtitles = const [];
 
   @override
   void initState() {
@@ -161,10 +162,24 @@ class _PlayerScreenState extends State<PlayerScreen> {
       _mode = _PlayerMode.loading;
       _nativeLabel = label;
       _nativeSourceName = name;
+      _subtitles = source.subtitles;
       _nativeFailed = false;
     });
     try {
-      await player.open(Media(source.playUrl));
+      await player.open(Media(
+        source.playUrl,
+        extras: {
+          if (source.subtitles.isNotEmpty)
+            'subtitle-tracks': [
+              for (final s in source.subtitles)
+                SubtitleTrack.uri(
+                  s.url,
+                  title: s.label,
+                  language: s.label,
+                ),
+            ],
+        },
+      ));
       if (!mounted) {
         unawaited(errorSub.cancel());
         unawaited(player.dispose());
@@ -194,6 +209,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       _player = null;
       _videoController = null;
       _nativeSourceName = null;
+      _subtitles = const [];
       _mode = _PlayerMode.loading;
     });
     _errorSub = null;
@@ -224,6 +240,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       _player = null;
       _videoController = null;
       _nativeSourceName = null;
+      _subtitles = const [];
       _web = null;
       _mode = _PlayerMode.loading;
     });
@@ -398,18 +415,25 @@ class _PlayerScreenState extends State<PlayerScreen> {
         children: [
           Row(
             children: [
-              _playPauseButton(context, player),
-              const SizedBox(width: 4),
+              _timeText(context, player.stream.position, player.state.position),
               Expanded(child: _seekBar(context, player)),
+              _timeText(context, player.stream.duration, player.state.duration),
             ],
           ),
           Row(
             children: [
-              _timeText(context, player.stream.position, player.state.position),
-              const SizedBox(width: 8),
               _speedButton(context, player),
+              const SizedBox(width: 4),
+              _subtitleButton(context, player),
+              const SizedBox(width: 4),
+              _audioButton(context, player),
               const Spacer(),
-              _timeText(context, player.stream.duration, player.state.duration),
+              Text(
+                _nativeLabel.isNotEmpty ? _nativeLabel : 'Native',
+                style: context.appTextTheme.labelMedium?.copyWith(
+                  color: Colors.white38,
+                ),
+              ),
             ],
           ),
         ],
@@ -417,25 +441,47 @@ class _PlayerScreenState extends State<PlayerScreen> {
     );
   }
 
-  Widget _timeText(
-    BuildContext context,
-    Stream<Duration> stream,
-    Duration initial,
-  ) {
-    return StreamBuilder<Duration>(
-      stream: stream,
-      initialData: initial,
-      builder: (context, snap) {
-        final value = snap.data ?? Duration.zero;
-        return Text(
-          _fmtTime(value),
-          style: context.appTextTheme.bodySmall?.copyWith(color: Colors.white70),
-        );
-      },
+  /// Big central transport cluster: rewind 10s, play/pause, forward 10s.
+  Widget _centerControls(BuildContext context) {
+    final player = _player;
+    if (_mode != _PlayerMode.native || player == null) {
+      return const SizedBox.shrink();
+    }
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          padding: const EdgeInsets.all(10),
+          iconSize: 40,
+          onPressed: () {
+            _hideTimer?.cancel();
+            _seekBy(player, -10);
+            _scheduleHide();
+          },
+          icon: Icon(Icons.replay_10, color: Colors.white),
+        ),
+        _centerPlayPauseButton(context, player),
+        IconButton(
+          padding: const EdgeInsets.all(10),
+          iconSize: 40,
+          onPressed: () {
+            _hideTimer?.cancel();
+            _seekBy(player, 10);
+            _scheduleHide();
+          },
+          icon: Icon(Icons.forward_10, color: Colors.white),
+        ),
+      ],
     );
   }
 
-  Widget _playPauseButton(BuildContext context, Player player) {
+  void _seekBy(Player player, int seconds) {
+    var target = player.state.position + Duration(seconds: seconds);
+    if (target < Duration.zero) target = Duration.zero;
+    unawaited(player.seek(target));
+  }
+
+  Widget _centerPlayPauseButton(BuildContext context, Player player) {
     return StreamBuilder<bool>(
       stream: player.stream.playing,
       initialData: player.state.playing,
@@ -443,9 +489,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
         final playing = snap.data ?? player.state.playing;
         final completed = player.state.completed;
         return IconButton(
-          padding: EdgeInsets.zero,
-          visualDensity: VisualDensity.compact,
-          iconSize: 44,
+          padding: const EdgeInsets.all(12),
+          iconSize: 72,
           onPressed: () {
             _hideTimer?.cancel();
             if (completed) {
@@ -464,6 +509,24 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     : PhosphorIcons.play()),
             color: Colors.white,
           ),
+        );
+      },
+    );
+  }
+
+  Widget _timeText(
+    BuildContext context,
+    Stream<Duration> stream,
+    Duration initial,
+  ) {
+    return StreamBuilder<Duration>(
+      stream: stream,
+      initialData: initial,
+      builder: (context, snap) {
+        final value = snap.data ?? Duration.zero;
+        return Text(
+          _fmtTime(value),
+          style: context.appTextTheme.bodySmall?.copyWith(color: Colors.white70),
         );
       },
     );
@@ -566,6 +629,187 @@ class _PlayerScreenState extends State<PlayerScreen> {
     );
   }
 
+  /// 'CC' button; only shown when the resolved source ships subtitle tracks.
+  Widget _subtitleButton(BuildContext context, Player player) {
+    return StreamBuilder<Tracks>(
+      stream: player.stream.tracks,
+      initialData: player.state.tracks,
+      builder: (context, snap) {
+        final tracks = snap.data ?? player.state.tracks;
+        final available = _subtitles.isNotEmpty || tracks.subtitle.isNotEmpty;
+        if (!available) return const SizedBox.shrink();
+        return InkWell(
+          onTap: () => _showSubtitleSheet(context, player),
+          borderRadius: BorderRadius.circular(6),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            child: Text(
+              'CC',
+              style: context.appTextTheme.labelMedium?.copyWith(
+                color: Colors.white70,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Audio-track picker; only shown when the source exposes more than one.
+  Widget _audioButton(BuildContext context, Player player) {
+    return StreamBuilder<Tracks>(
+      stream: player.stream.tracks,
+      initialData: player.state.tracks,
+      builder: (context, snap) {
+        final tracks = snap.data ?? player.state.tracks;
+        if (tracks.audio.length < 2) return const SizedBox.shrink();
+        return InkWell(
+          onTap: () => _showAudioSheet(context, player),
+          borderRadius: BorderRadius.circular(6),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            child: Text(
+              'Audio',
+              style: context.appTextTheme.labelMedium?.copyWith(
+                color: Colors.white70,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showSubtitleSheet(BuildContext context, Player player) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: context.appSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) => StreamBuilder<Tracks>(
+        stream: player.stream.tracks,
+        initialData: player.state.tracks,
+        builder: (context, snapTracks) {
+          return StreamBuilder<Track>(
+            stream: player.stream.track,
+            initialData: player.state.track,
+            builder: (context, snapTrack) {
+              final tracks = snapTracks.data ?? player.state.tracks;
+              final selected = snapTrack.data?.subtitle?.id;
+              final off = SubtitleTrack.no();
+              final items = <({SubtitleTrack track, String label})>[
+                (track: off, label: 'Off'),
+                for (final t in tracks.subtitle)
+                  (track: t, label: t.title ?? t.language ?? 'Subtitle'),
+              ];
+              return SafeArea(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Subtitles',
+                          style: context.appTextTheme.titleMedium?.copyWith(
+                            color: context.appOnSurface,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    for (final item in items)
+                      ListTile(
+                        title: Text(
+                          item.label,
+                          style: context.appTextTheme.bodyMedium?.copyWith(
+                            color: context.appOnSurface,
+                          ),
+                        ),
+                        trailing: item.track.id == selected
+                            ? Icon(PhosphorIcons.check(), color: context.appAccent)
+                            : null,
+                        onTap: () {
+                          Navigator.pop(sheetContext);
+                          unawaited(player.setSubtitleTrack(item.track));
+                        },
+                      ),
+                    const SizedBox(height: 8),
+                  ],
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  void _showAudioSheet(BuildContext context, Player player) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: context.appSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) => StreamBuilder<Tracks>(
+        stream: player.stream.tracks,
+        initialData: player.state.tracks,
+        builder: (context, snapTracks) {
+          return StreamBuilder<Track>(
+            stream: player.stream.track,
+            initialData: player.state.track,
+            builder: (context, snapTrack) {
+              final tracks = snapTracks.data ?? player.state.tracks;
+              final selected = snapTrack.data?.audio;
+              return SafeArea(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Audio',
+                          style: context.appTextTheme.titleMedium?.copyWith(
+                            color: context.appOnSurface,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                    for (final audio in tracks.audio)
+                      ListTile(
+                        title: Text(
+                          audio,
+                          style: context.appTextTheme.bodyMedium?.copyWith(
+                            color: context.appOnSurface,
+                          ),
+                        ),
+                        trailing: audio == selected
+                            ? Icon(PhosphorIcons.check(), color: context.appAccent)
+                            : null,
+                        onTap: () {
+                          Navigator.pop(sheetContext);
+                          unawaited(player.setAudioTrack(audio));
+                        },
+                      ),
+                    const SizedBox(height: 8),
+                  ],
+                ),
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+
   Widget _videoBody() {
     final player = _player;
     final controller = _videoController;
@@ -612,6 +856,20 @@ class _PlayerScreenState extends State<PlayerScreen> {
                     opacity: _controlsVisible ? 1 : 0,
                     duration: const Duration(milliseconds: 200),
                     child: _topBar(context),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: IgnorePointer(
+                  ignoring: !_controlsVisible,
+                  child: AnimatedOpacity(
+                    opacity: _controlsVisible ? 1 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: Center(child: _centerControls(context)),
                   ),
                 ),
               ),

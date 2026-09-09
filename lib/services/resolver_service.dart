@@ -4,27 +4,65 @@ import 'package:http/http.dart' as http;
 
 import '../config.dart';
 
+/// A subtitle track attached to a resolved native source (VidLink captions).
+class SubtitleInfo {
+  const SubtitleInfo({
+    required this.url,
+    required this.label,
+    required this.type,
+  });
+
+  final String url;
+  final String label;
+  final String type;
+
+  static SubtitleInfo? tryFromJson(Object? data) {
+    if (data is! Map<String, dynamic>) return null;
+    final url = data['url'];
+    if (url is! String || url.isEmpty) return null;
+    return SubtitleInfo(
+      url: url,
+      label: data['label'] as String? ?? 'Subtitle',
+      type: data['type'] as String? ?? 'srt',
+    );
+  }
+}
+
 /// A resolved native playback URL from the Kumi resolver worker.
 class ResolvedSource {
   const ResolvedSource({
     required this.playUrl,
     required this.quality,
     required this.provider,
+    this.subtitles = const [],
   });
 
   final String playUrl;
   final String quality;
   final String provider;
 
+  /// Optional external subtitle tracks for this source (e.g. VidLink
+  /// captions). Empty when the provider exposes none.
+  final List<SubtitleInfo> subtitles;
+
   static ResolvedSource? tryFromJson(Object? data) {
     if (data is! Map<String, dynamic>) return null;
     if (data['ok'] != true) return null;
     final playUrl = data['playUrl'];
     if (playUrl is! String || playUrl.isEmpty) return null;
+    final rawSubtitles = data['subtitles'];
+    final subtitles = rawSubtitles is List
+        ? [
+            for (final item in rawSubtitles)
+              if (SubtitleInfo.tryFromJson(item) case final subtitle?)
+                subtitle,
+          ]
+        : const <SubtitleInfo>[];
     return ResolvedSource(
       playUrl: playUrl,
       quality: data['quality'] as String? ?? 'auto',
       provider: data['provider'] as String? ?? 'native',
+      subtitles: subtitles,
     );
   }
 }
