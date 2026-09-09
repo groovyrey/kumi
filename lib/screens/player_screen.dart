@@ -24,11 +24,19 @@ class PlayerScreen extends StatefulWidget {
     required this.title,
     required this.id,
     required this.media,
+    this.preferredProvider,
+    this.forceEmbed = false,
   });
 
   final String title;
   final int id;
   final String media;
+
+  /// When set, this native provider ('vidlink' | 'vidlove') is tried first.
+  final String? preferredProvider;
+
+  /// When true, skip native sources and go straight to the embed.
+  final bool forceEmbed;
 
   @override
   State<PlayerScreen> createState() => _PlayerScreenState();
@@ -72,8 +80,26 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   /// Native-first: try every direct-file provider, then fall back to embed.
+  /// An explicit [PlayerScreen.preferredProvider] is attempted first (and
+  /// removed from the later pass so it is not tried twice).
   Future<void> _start() async {
-    for (final provider in NativeSources.providers) {
+    if (widget.forceEmbed) {
+      _fallbackToEmbed();
+      return;
+    }
+    var providers = NativeSources.providers;
+    final preferred = widget.preferredProvider;
+    if (preferred != null) {
+      final others = providers
+          .where((p) => p.name != preferred)
+          .toList();
+      final preferredItem = providers.where((p) => p.name == preferred).firstOrNull;
+      providers = [
+        if (preferredItem != null) preferredItem,
+        ...others,
+      ];
+    }
+    for (final provider in providers) {
       try {
         final source = await _resolver.resolve(
           provider: provider.name,
@@ -81,17 +107,23 @@ class _PlayerScreenState extends State<PlayerScreen> {
           id: widget.id,
         );
         if (!mounted) return;
-        await _playNative(source, provider.label);
-        return;
+        final started = await _playNative(source, provider.label);
+        if (!mounted) return;
+        if (started) return;
       } catch (_) {
+        if (!mounted) return;
         // Try the next provider.
       }
     }
     if (!mounted) return;
-    _fallbackToEmbed();
+    _fallbackToEmbed(
+      notice:
+          'None of the direct sources could play — using the embed source instead.',
+    );
   }
 
-  Future<void> _playNative(ResolvedSource source, String label) async {
+  /// Starts native playback; returns true when the video actually initialized.
+  Future<bool> _playNative(ResolvedSource source, String label) async {
     final video = VideoPlayerController.networkUrl(
       Uri.parse(source.playUrl),
     );
@@ -104,7 +136,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       await video.initialize();
       if (!mounted) {
         video.dispose();
-        return;
+        return false;
       }
       setState(() {
         _video = video;
@@ -112,22 +144,22 @@ class _PlayerScreenState extends State<PlayerScreen> {
       });
       unawaited(video.play());
       _scheduleHide();
+      return true;
     } catch (_) {
-      if (!mounted) return;
-      video.dispose();
-      _fallbackToEmbed();
+      if (mounted) video.dispose();
+      return false;
     }
   }
 
-  void _fallbackToEmbed() {
+  void _fallbackToEmbed({String? notice}) {
     if (!mounted) return;
     final controller = _buildController(_embedUrl());
     setState(() {
       _web = controller;
       _mode = _PlayerMode.embed;
-      _nativeFailed = true;
+      _nativeFailed = notice != null;
       _fallbackNotice =
-          'No direct source available for this title — playing embed source instead.';
+          notice ?? '';
     });
     _scheduleHide();
   }

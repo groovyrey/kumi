@@ -26,7 +26,7 @@ class DetailScreen extends StatelessWidget {
     return date.isAfter(DateTime(now.year, now.month, now.day));
   }
 
-  void _play(BuildContext context) {
+  void _play(BuildContext context, {String? provider, bool forceEmbed = false}) {
     WatchHistory.instance.record(item);
     Navigator.push(
       context,
@@ -35,6 +35,8 @@ class DetailScreen extends StatelessWidget {
           title: item.title,
           id: item.id,
           media: _mediaParam,
+          preferredProvider: provider,
+          forceEmbed: forceEmbed,
         ),
       ),
     );
@@ -182,7 +184,7 @@ class DetailScreen extends StatelessWidget {
                     ] else ...[
                       const SizedBox(height: 26),
                       Text(
-                        'Watch on CineSrc',
+                        'Play sources',
                         style: context.appTextTheme.headlineSmall?.copyWith(
                           color: context.appOnSurface,
                         ),
@@ -190,9 +192,20 @@ class DetailScreen extends StatelessWidget {
                       const SizedBox(height: 10),
                       _SourceButton(
                         label: 'CineSrc',
-                        defaultSource: true,
-                        onTap: () => _play(context),
+                        hint: 'Embed source',
+                        onTap: () => _play(context, forceEmbed: true),
                       ),
+                      const SizedBox(height: 10),
+                      for (final provider in NativeSources.providers)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: _SourceButton(
+                            label: provider.label,
+                            hint: 'Direct playback',
+                            onTap: () =>
+                                _play(context, provider: provider.name),
+                          ),
+                        ),
                     ],
                   ],
                 ),
@@ -302,12 +315,12 @@ class DetailScreen extends StatelessWidget {
 class _SourceButton extends StatelessWidget {
   const _SourceButton({
     required this.label,
-    required this.defaultSource,
     required this.onTap,
+    this.hint,
   });
 
   final String label;
-  final bool defaultSource;
+  final String? hint;
   final VoidCallback onTap;
 
   @override
@@ -329,11 +342,23 @@ class _SourceButton extends StatelessWidget {
                 size: 22, color: context.appAccent),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                'Watch on $label${defaultSource ? '  ·  Default' : ''}',
-                style: context.appTextTheme.titleLarge?.copyWith(
-                  color: context.appOnSurface,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Watch on $label',
+                    style: context.appTextTheme.titleLarge?.copyWith(
+                      color: context.appOnSurface,
+                    ),
+                  ),
+                  if (hint != null)
+                    Text(
+                      hint!,
+                      style: context.appTextTheme.bodySmall?.copyWith(
+                        color: context.appOnSurfaceVariant,
+                      ),
+                    ),
+                ],
               ),
             ),
             Icon(PhosphorIcons.caretRight(),
