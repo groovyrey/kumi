@@ -85,6 +85,7 @@ class ResolverService {
   /// Resolves a playable URL for [provider] ('vidlink' | 'vidlove').
   ///
   /// [type] is 'movie' or 'tv'; [season]/[episode] are required for tv.
+  /// [quality] is a hint respected when the provider exposes that tier.
   /// Throws [ResolveFailure] when the provider has nothing for this title.
   Future<ResolvedSource> resolve({
     required String provider,
@@ -92,14 +93,20 @@ class ResolverService {
     required int id,
     int season = 1,
     int episode = 1,
+    String quality = 'auto',
   }) async {
-    final uri = Uri.parse('${AppConfig.resolverBase}/resolve').replace(
+    final base = (AppConfig.resolverBaseOverride.isNotEmpty
+            ? AppConfig.resolverBaseOverride
+            : AppConfig.resolverBase)
+        .replaceFirst(RegExp(r'/$'), '');
+    final uri = Uri.parse('$base/resolve').replace(
       queryParameters: {
         'provider': provider,
         'type': type,
         'id': '$id',
         if (type == 'tv') 'season': '$season',
         if (type == 'tv') 'episode': '$episode',
+        if (quality != 'auto') 'quality': quality,
       },
     );
     final http.Response res;

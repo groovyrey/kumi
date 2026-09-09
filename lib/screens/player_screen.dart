@@ -5,12 +5,15 @@ import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:provider/provider.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 
 import '../config.dart';
 import '../services/resolver_service.dart';
+import '../state/app_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/embed_ad_guard.dart';
 
@@ -61,16 +64,36 @@ class _PlayerScreenState extends State<PlayerScreen> {
   List<SubtitleInfo> _subtitles = const [];
   String? _activeSubtitleUrl;
 
+  // Settings snapshot taken when the player opens.
+  PlaybackEngine _engine = PlaybackEngine.native;
+  bool _hardwareDecode = false;
+  double _defaultRate = 1.0;
+  String _preferredSubtitle = '';
+  ControlsTimeout _controlsTimeout = ControlsTimeout.short;
+  SourceOrder _sourceOrder = SourceOrder.auto;
+  bool _keepAwake = true;
+  String _quality = 'auto';
+
   @override
   void initState() {
     super.initState();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    final app = context.read<AppState>();
+    _engine = app.engine;
+    _hardwareDecode = app.hardwareDecode;
+    _defaultRate = app.defaultSpeed;
+    _preferredSubtitle = app.preferredSubtitle;
+    _controlsTimeout = app.controlsTimeout;
+    _sourceOrder = app.sourceOrder;
+    _keepAwake = app.keepAwake;
+    _quality = app.quality.value;
     _start();
   }
 
   @override
   void dispose() {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    unawaited(WakelockPlus.disable());
     _hideTimer?.cancel();
     unawaited(_errorSub?.cancel());
     _errorSub = null;
@@ -96,11 +119,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
   /// An explicit [PlayerScreen.preferredProvider] is attempted first (and
   /// removed from the later pass so it is not tried twice).
   Future<void> _start() async {
-    if (widget.forceEmbed) {
+    if (widget.forceEmbed || _engine == PlaybackEngine.embed) {
       _fallbackToEmbed();
       return;
     }
-    await _startWithPreferred(widget.preferredProvider);
+    final preferred = widget.preferredProvider ??
+        (_sourceOrder == SourceOrder.auto ? null : _sourceOrder.name);
+    await _startWithPreferred(preferred);
   }
 
   /// Rebuilds the native provider queue with [preferred] first and runs it.
@@ -124,6 +149,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
           provider: provider.name,
           type: _type,
           id: widget.id,
+          quality: _quality,
         );
         if (!mounted) return;
         final started = await _playNative(source, provider.name, provider.label);
@@ -146,10 +172,10 @@ class _PlayerScreenState extends State<PlayerScreen> {
     final player = Player();
     final controller = VideoController(
       player,
-      // Software decode avoids MediaCodec failures seen on some devices with
-      // both H.264 and HEVC hardware decoding.
-      configuration: const VideoControllerConfiguration(
-        enableHardwareAcceleration: false,
+      // Hardware decode can be enabled in Settings; off by default because
+      // MediaCodec has been flaky for both H.264 and HEVC on some devices.
+      configuration: VideoControllerConfiguration(
+        enableHardwareAcceleration: _hardwareDecode,
       ),
     );
     final errorSub = player.stream.error.listen((message) {
@@ -179,6 +205,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
         _videoController = controller;
         _mode = _PlayerMode.native;
       });
+      if (_defaultRate != 1.0) unawaited(player.setRate(_defaultRate));
+      _applyPreferredSubtitle(player);
+      if (_keepAwake) unawaited(WakelockPlus.enable());
       _scheduleHide();
       return true;
     } catch (error) {
@@ -187,6 +216,29 @@ class _PlayerScreenState extends State<PlayerScreen> {
       unawaited(player.dispose());
       return false;
     }
+  }
+
+  /// When the user set a preferred subtitle language in Settings, pick the
+  /// first source track whose language mentions it.
+  void _applyPreferredSubtitle(Player player) {
+    if (_preferredSubtitle.isEmpty) return;
+    final pref = _preferredSubtitle.toLowerCase();
+    SubtitleInfo? match;
+    for (final s in _subtitles) {
+      if (s.label.toLowerCase().contains(pref)) {
+        match = s;
+        break;
+      }
+    }
+    if (match == null) return;
+    setState(() => _activeSubtitleUrl = match.url);
+    unawaited(player.setSubtitleTrack(
+      SubtitleTrack.uri(
+        match.url,
+        title: match.label,
+        language: match.label,
+      ),
+    ));
   }
 
   /// Tears down the failed native player and tries the next provider, so a
@@ -363,7 +415,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   void _scheduleHide() {
     _hideTimer?.cancel();
-    _hideTimer = Timer(const Duration(seconds: 4), () {
+    if (_controlsTimeout == ControlsTimeout.never) return;
+    final delay = _controlsTimeout == ControlsTimeout.long
+        ? const Duration(seconds: 8)
+        : const Duration(seconds: 4);
+    _hideTimer = Timer(delay, () {
       if (mounted) setState(() => _controlsVisible = false);
     });
   }

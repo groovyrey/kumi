@@ -33,15 +33,23 @@ class VersionChecker {
   static const _cachedCheckKey = 'last_version_check';
 
   /// Returns a newer release than the installed app, or null when Kumi is up
-  /// to date (or the check can't be made).
-  Future<VersionInfo?> check() async {
+  /// to date (or the check can't be made). When [includePrerelease] is true,
+  /// the rolling beta pre-release is announced too; when [enabled] is false the
+  /// check is skipped entirely (auto-check turned off in Settings).
+  Future<VersionInfo?> check({
+    bool includePrerelease = false,
+    bool enabled = true,
+  }) async {
+    if (!enabled) return null;
     final prefs = await SharedPreferences.getInstance();
     final installed = await _installedVersion();
+    final suffix = includePrerelease ? '_beta' : '_stable';
 
     try {
-      final cachedVersion = prefs.getString(_cachedVersionKey) ?? '';
-      final cachedUrl = prefs.getString(_cachedUrlKey) ?? _releasesUrl;
-      final lastCheck = prefs.getInt(_cachedCheckKey) ?? 0;
+      final cachedVersion = prefs.getString('$_cachedVersionKey$suffix') ?? '';
+      final cachedUrl =
+          prefs.getString('$_cachedUrlKey$suffix') ?? _releasesUrl;
+      final lastCheck = prefs.getInt('$_cachedCheckKey$suffix') ?? 0;
       final withinWindow =
           DateTime.now().millisecondsSinceEpoch - lastCheck <
               _cacheWindow.inMilliseconds;
@@ -63,7 +71,8 @@ class VersionChecker {
       Map<String, dynamic>? latest;
       for (final entry in data) {
         final item = (entry as Map).cast<String, dynamic>();
-        if (item['draft'] == true || item['prerelease'] == true) continue;
+        if (item['draft'] == true) continue;
+        if (item['prerelease'] == true && !includePrerelease) continue;
         latest = item;
         break;
       }
@@ -75,9 +84,9 @@ class VersionChecker {
       if (version.isEmpty) return null;
 
       await prefs.setInt(
-          _cachedCheckKey, DateTime.now().millisecondsSinceEpoch);
-      await prefs.setString(_cachedVersionKey, version);
-      await prefs.setString(_cachedUrlKey, url);
+          '$_cachedCheckKey$suffix', DateTime.now().millisecondsSinceEpoch);
+      await prefs.setString('$_cachedVersionKey$suffix', version);
+      await prefs.setString('$_cachedUrlKey$suffix', url);
 
       if (!_isNewer(version, installed)) return null;
       return VersionInfo(version: version, url: url);

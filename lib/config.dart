@@ -8,6 +8,10 @@ class AppConfig {
   /// Resolver/proxy worker that returns native playable (MP4 / HLS) URLs for
   /// the direct-file providers. See worker8652 `/api/kumi/resolve`.
   static const resolverBase = 'https://worker8652.appleflux.workers.dev/api/kumi';
+
+  /// Optional user-supplied resolver base set from Settings; when non-empty it
+  /// shadows [resolverBase]. Kept in [AppState], mutated before resolve calls.
+  static String resolverBaseOverride = '';
 }
 
 /// Native direct-file sources. These resolve to a playable MP4 or proxied HLS

@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../config.dart';
@@ -10,6 +11,7 @@ import '../services/screen_time.dart';
 import '../services/tmdb_service.dart';
 import '../services/version_checker.dart';
 import '../services/watch_history.dart';
+import '../state/app_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/poster_rail.dart';
 import '../widgets/web_controls.dart';
@@ -40,7 +42,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _checkForUpdate() async {
-    final update = await VersionChecker().check();
+    final app = context.read<AppState>();
+    final update = await VersionChecker().check(
+      includePrerelease: app.updateChannel == UpdateChannel.beta,
+      enabled: app.autoCheckUpdates,
+    );
     if (!mounted || update == null) return;
     setState(() => _update = update);
   }
