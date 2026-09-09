@@ -17,11 +17,15 @@ class PosterRail extends StatefulWidget {
     required this.fetch,
     this.posterWidth = 130,
     this.loadBeneath = 500,
+    this.showRank = false,
   });
 
   final Future<MediaPage> Function(int page) fetch;
   final double posterWidth;
   final double loadBeneath;
+
+  /// When true, posters get a "#N" rank badge (used by the Top Rated rail).
+  final bool showRank;
 
   @override
   State<PosterRail> createState() => _PosterRailState();
@@ -95,6 +99,7 @@ class _PosterRailState extends State<PosterRail> {
               child: MediaPoster(
                 item: item,
                 width: widget.posterWidth,
+                rank: widget.showRank ? i + 1 : null,
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => DetailScreen(item: item)),

@@ -11,11 +11,15 @@ class MediaPoster extends StatelessWidget {
     required this.item,
     this.width = 130,
     this.onTap,
+    this.rank,
   });
 
   final MediaItem item;
   final double width;
   final VoidCallback? onTap;
+
+  /// When set, a leaderboard-style "#N" badge is drawn on the poster.
+  final int? rank;
 
   @override
   Widget build(BuildContext context) {
@@ -57,6 +61,12 @@ class MediaPoster extends StatelessWidget {
                     },
                   ),
                 ),
+                if (rank != null)
+                  Positioned(
+                    left: 7,
+                    bottom: 7,
+                    child: _RankBadge(rank: rank!),
+                  ),
               ],
             ),
             const SizedBox(height: 8),
@@ -80,6 +90,41 @@ class MediaPoster extends StatelessWidget {
         PhosphorIcons.filmSlate(),
         size: 32,
         color: context.appOnSurfaceVariant,
+      ),
+    );
+  }
+}
+
+/// Leaderboard-style "#N" rank badge drawn over a poster.
+class _RankBadge extends StatelessWidget {
+  const _RankBadge({required this.rank});
+
+  final int rank;
+
+  @override
+  Widget build(BuildContext context) {
+    final featured = rank <= 5;
+    return Container(
+      width: 34,
+      height: 30,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: featured
+            ? context.appAccent
+            : Colors.black.withValues(alpha: 0.62),
+        borderRadius: BorderRadius.circular(9),
+        border: featured
+            ? null
+            : Border.all(color: Colors.white.withValues(alpha: 0.35)),
+      ),
+      child: Text(
+        '$rank',
+        style: context.appTextTheme.labelSmall?.copyWith(
+          color: featured ? context.appOnAccent : Colors.white,
+          fontWeight: FontWeight.w800,
+          fontSize: 15,
+          height: 1,
+        ),
       ),
     );
   }

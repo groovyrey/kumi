@@ -302,7 +302,13 @@ class _BrowseScreenState extends State<BrowseScreen> {
           if (_featured != null && section.title == 'Now Playing')
             SliverToBoxAdapter(child: _featuredCard(context, _featured!)),
           SliverToBoxAdapter(
-            child: SizedBox(height: 250, child: PosterRail(fetch: section.fetch)),
+            child: SizedBox(
+              height: 250,
+              child: PosterRail(
+                fetch: section.fetch,
+                showRank: section.title == 'Top Rated',
+              ),
+            ),
           ),
         ],
         const SliverToBoxAdapter(child: SizedBox(height: 16)),
@@ -529,9 +535,252 @@ class _CategoryScreen extends StatelessWidget {
             ),
             Divider(height: 16, color: AppColors.cardBorder),
             Expanded(
-              child: LazyMediaGrid(fetch: section.fetch),
+              child: section.title == 'Top Rated'
+                  ? _RankedCategoryList(fetch: section.fetch)
+                  : LazyMediaGrid(fetch: section.fetch),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Leaderboard-style paged list for the Top Rated "See all": a big rank
+/// number, poster, title and rating per row instead of the poster grid.
+class _RankedCategoryList extends StatefulWidget {
+  const _RankedCategoryList({required this.fetch});
+
+  final Future<MediaPage> Function(int page) fetch;
+
+  @override
+  State<_RankedCategoryList> createState() => _RankedCategoryListState();
+}
+
+class _RankedCategoryListState extends State<_RankedCategoryList> {
+  final List<MediaItem> _items = [];
+  int _page = 0;
+  bool _hasMore = true;
+  bool _loading = false;
+  bool _failed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMore();
+  }
+
+  Future<void> _loadMore() async {
+    if (_loading || !_hasMore) return;
+    setState(() {
+      _loading = true;
+      _failed = false;
+    });
+    try {
+      final result = await widget.fetch(_page + 1);
+      if (!mounted) return;
+      setState(() {
+        _page = result.page;
+        _hasMore = result.hasMore;
+        _items.addAll(result.items);
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _failed = true;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return NotificationListener<ScrollNotification>(
+      onNotification: (notification) {
+        if (notification.metrics.axis == Axis.vertical &&
+            notification.metrics.pixels >=
+                notification.metrics.maxScrollExtent - 800) {
+          _loadMore();
+        }
+        return false;
+      },
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+        itemCount: _items.length + 1,
+        itemBuilder: (context, i) {
+          if (i == _items.length) return _footer(context);
+          final item = _items[i];
+          return _rankRow(context, i + 1, item);
+        },
+      ),
+    );
+  }
+
+  Widget _rankRow(BuildContext context, int rank, MediaItem item) {
+    final featured = rank <= 5;
+    return InkWell(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => DetailScreen(item: item)),
+      ),
+      borderRadius: BorderRadius.circular(10),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 42,
+              child: Center(child: _rankPlate(context, rank, featured)),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              width: 46,
+              height: 69,
+              decoration: BoxDecoration(
+                color: context.appSurface,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.cardBorder),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: item.posterUrl.isEmpty
+                  ? Icon(
+                      PhosphorIcons.filmSlate(),
+                      size: 18,
+                      color: context.appOnSurfaceVariant,
+                    )
+                  : Image.network(
+                      item.posterUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Icon(
+                        PhosphorIcons.filmSlate(),
+                        size: 18,
+                        color: context.appOnSurfaceVariant,
+                      ),
+                    ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.appTextTheme.bodyLarge?.copyWith(
+                      color: context.appOnSurface,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      Icon(
+                        PhosphorIcons.star(),
+                        size: 14,
+                        color: context.appAccent,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        item.rating.toStringAsFixed(1),
+                        style: context.appTextTheme.bodySmall?.copyWith(
+                          color: context.appOnSurfaceVariant,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      if (item.releaseDate.isNotEmpty) ...[
+                        const SizedBox(width: 8),
+                        Text(
+                          item.releaseDate,
+                          style: context.appTextTheme.bodySmall,
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(
+              PhosphorIcons.caretRight(),
+              size: 16,
+              color: context.appAccent,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _footer(BuildContext context) {
+    Widget child;
+    if (_loading) {
+      child = const SizedBox(
+        width: 22,
+        height: 22,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      );
+    } else if (_failed) {
+      child = Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'Could not load titles.',
+            style: context.appTextTheme.bodyMedium,
+          ),
+          TextButton(onPressed: _loadMore, child: const Text('Retry')),
+        ],
+      );
+    } else if (_items.isEmpty) {
+      child = Text(
+        'No titles found.',
+        style: context.appTextTheme.bodyMedium,
+      );
+    } else if (!_hasMore) {
+      child = Text(
+        'You reached the end.',
+        style: context.appTextTheme.bodyMedium,
+      );
+    } else {
+      child = const SizedBox(height: 8);
+    }
+    return Center(child: Padding(padding: const EdgeInsets.only(top: 18), child: child));
+  }
+
+  Widget _rankPlate(BuildContext context, int rank, bool featured) {
+    if (!featured) {
+      return Text(
+        '#$rank',
+        textAlign: TextAlign.center,
+        style: context.appTextTheme.headlineSmall?.copyWith(
+          color: context.appOnSurfaceVariant,
+          fontWeight: FontWeight.w700,
+          fontFeatures: const [FontFeature.tabularFigures()],
+        ),
+      );
+    }
+    return Container(
+      width: 38,
+      height: 38,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: context.appAccent,
+        borderRadius: BorderRadius.circular(11),
+        boxShadow: [
+          BoxShadow(
+            color: context.appAccent.withValues(alpha: 0.35),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Text(
+        '#$rank',
+        style: context.appTextTheme.titleMedium?.copyWith(
+          color: context.appOnAccent,
+          fontWeight: FontWeight.w800,
+          height: 1,
         ),
       ),
     );
