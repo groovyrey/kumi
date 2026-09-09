@@ -59,6 +59,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   double? _dragSeconds;
   String? _nativeSourceName;
   List<SubtitleInfo> _subtitles = const [];
+  String? _activeSubtitleUrl;
 
   @override
   void initState() {
@@ -163,23 +164,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
       _nativeLabel = label;
       _nativeSourceName = name;
       _subtitles = source.subtitles;
+      _activeSubtitleUrl = null;
       _nativeFailed = false;
     });
     try {
-      await player.open(Media(
-        source.playUrl,
-        extras: {
-          if (source.subtitles.isNotEmpty)
-            'subtitle-tracks': [
-              for (final s in source.subtitles)
-                SubtitleTrack.uri(
-                  s.url,
-                  title: s.label,
-                  language: s.label,
-                ),
-            ],
-        },
-      ));
+      await player.open(Media(source.playUrl));
       if (!mounted) {
         unawaited(errorSub.cancel());
         unawaited(player.dispose());
@@ -210,6 +199,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       _videoController = null;
       _nativeSourceName = null;
       _subtitles = const [];
+      _activeSubtitleUrl = null;
       _mode = _PlayerMode.loading;
     });
     _errorSub = null;
@@ -241,6 +231,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       _videoController = null;
       _nativeSourceName = null;
       _subtitles = const [];
+      _activeSubtitleUrl = null;
       _web = null;
       _mode = _PlayerMode.loading;
     });
@@ -631,28 +622,20 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   /// 'CC' button; only shown when the resolved source ships subtitle tracks.
   Widget _subtitleButton(BuildContext context, Player player) {
-    return StreamBuilder<Tracks>(
-      stream: player.stream.tracks,
-      initialData: player.state.tracks,
-      builder: (context, snap) {
-        final tracks = snap.data ?? player.state.tracks;
-        final available = _subtitles.isNotEmpty || tracks.subtitle.isNotEmpty;
-        if (!available) return const SizedBox.shrink();
-        return InkWell(
-          onTap: () => _showSubtitleSheet(context, player),
-          borderRadius: BorderRadius.circular(6),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            child: Text(
-              'CC',
-              style: context.appTextTheme.labelMedium?.copyWith(
-                color: Colors.white70,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+    if (_subtitles.isEmpty) return const SizedBox.shrink();
+    return InkWell(
+      onTap: () => _showSubtitleSheet(context, player),
+      borderRadius: BorderRadius.circular(6),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Text(
+          'CC',
+          style: context.appTextTheme.labelMedium?.copyWith(
+            color: Colors.white70,
+            fontWeight: FontWeight.w600,
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -663,7 +646,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
       initialData: player.state.tracks,
       builder: (context, snap) {
         final tracks = snap.data ?? player.state.tracks;
-        if (tracks.audio.length < 2) return const SizedBox.shrink();
+        // Ignore the 'auto'/'no' placeholders; only show when several real
+        // audio tracks are available to switch between.
+        final realAudio = tracks.audio
+            .where((a) => a.id != 'auto' && a.id != 'no');
+        if (realAudio.length < 2) return const SizedBox.shrink();
         return InkWell(
           onTap: () => _showAudioSheet(context, player),
           borderRadius: BorderRadius.circular(6),
@@ -683,68 +670,70 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   void _showSubtitleSheet(BuildContext context, Player player) {
+    final items = <({bool isOff, String label, SubtitleInfo? sub})>[
+      (isOff: true, label: 'Off', sub: null),
+      for (final s in _subtitles)
+        (isOff: false, label: s.label, sub: s),
+    ];
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: context.appSurface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (sheetContext) => StreamBuilder<Tracks>(
-        stream: player.stream.tracks,
-        initialData: player.state.tracks,
-        builder: (context, snapTracks) {
-          return StreamBuilder<Track>(
-            stream: player.stream.track,
-            initialData: player.state.track,
-            builder: (context, snapTrack) {
-              final tracks = snapTracks.data ?? player.state.tracks;
-              final selected = snapTrack.data?.subtitle.id;
-              final off = SubtitleTrack.no();
-              final items = <({SubtitleTrack track, String label})>[
-                (track: off, label: 'Off'),
-                for (final t in tracks.subtitle)
-                  (track: t, label: t.title ?? t.language ?? 'Subtitle'),
-              ];
-              return SafeArea(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Subtitles',
-                          style: context.appTextTheme.titleMedium?.copyWith(
-                            color: context.appOnSurface,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                    for (final item in items)
-                      ListTile(
-                        title: Text(
-                          item.label,
-                          style: context.appTextTheme.bodyMedium?.copyWith(
-                            color: context.appOnSurface,
-                          ),
-                        ),
-                        trailing: item.track.id == selected
-                            ? Icon(PhosphorIcons.check(), color: context.appAccent)
-                            : null,
-                        onTap: () {
-                          Navigator.pop(sheetContext);
-                          unawaited(player.setSubtitleTrack(item.track));
-                        },
-                      ),
-                    const SizedBox(height: 8),
-                  ],
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Subtitles',
+                  style: context.appTextTheme.titleMedium?.copyWith(
+                    color: context.appOnSurface,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              );
-            },
-          );
-        },
+              ),
+            ),
+            for (final item in items)
+              ListTile(
+                title: Text(
+                  item.label,
+                  style: context.appTextTheme.bodyMedium?.copyWith(
+                    color: context.appOnSurface,
+                  ),
+                ),
+                trailing: _activeSubtitleUrl == null && item.isOff
+                    ? Icon(PhosphorIcons.check(), color: context.appAccent)
+                    : (item.sub != null &&
+                            item.sub!.url == _activeSubtitleUrl)
+                        ? Icon(PhosphorIcons.check(),
+                            color: context.appAccent)
+                        : null,
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  final sub = item.sub;
+                  if (sub == null) {
+                    setState(() => _activeSubtitleUrl = null);
+                    unawaited(player.setSubtitleTrack(SubtitleTrack.no()));
+                  } else {
+                    setState(() => _activeSubtitleUrl = sub.url);
+                    unawaited(player.setSubtitleTrack(
+                      SubtitleTrack.uri(
+                        sub.url,
+                        title: sub.label,
+                        language: sub.label,
+                      ),
+                    ));
+                  }
+                },
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
       ),
     );
   }
@@ -765,7 +754,11 @@ class _PlayerScreenState extends State<PlayerScreen> {
             initialData: player.state.track,
             builder: (context, snapTrack) {
               final tracks = snapTracks.data ?? player.state.tracks;
-              final selected = snapTrack.data?.audio.id;
+              final selectedId = snapTrack.data?.audio.id;
+              final realAudio = [
+                for (final a in tracks.audio)
+                  if (a.id != 'auto' && a.id != 'no') a,
+              ];
               return SafeArea(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -783,7 +776,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                         ),
                       ),
                     ),
-                    for (final audio in tracks.audio)
+                    for (final audio in realAudio)
                       ListTile(
                         title: Text(
                           audio.title ?? audio.id,
@@ -791,7 +784,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                             color: context.appOnSurface,
                           ),
                         ),
-                        trailing: audio.id == selected
+                        trailing: audio.id == selectedId
                             ? Icon(PhosphorIcons.check(), color: context.appAccent)
                             : null,
                         onTap: () {
