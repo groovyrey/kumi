@@ -80,6 +80,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
     return src.$2(id: widget.id, media: widget.media);
   }
 
+  List<({String name, String label})> _providers = const [];
+  int _providerIndex = 0;
+
   /// Native-first: try every direct-file provider, then fall back to embed.
   /// An explicit [PlayerScreen.preferredProvider] is attempted first (and
   /// removed from the later pass so it is not tried twice).
@@ -94,13 +97,21 @@ class _PlayerScreenState extends State<PlayerScreen> {
       final others = providers
           .where((p) => p.name != preferred)
           .toList();
-      final preferredItem = providers.where((p) => p.name == preferred).firstOrNull;
+      final preferredItem =
+          providers.where((p) => p.name == preferred).firstOrNull;
       providers = [
         if (preferredItem != null) preferredItem,
         ...others,
       ];
     }
-    for (final provider in providers) {
+    _providers = providers;
+    _providerIndex = 0;
+    await _tryNextProvider();
+  }
+
+  Future<void> _tryNextProvider() async {
+    while (_providerIndex < _providers.length) {
+      final provider = _providers[_providerIndex++];
       try {
         final source = await _resolver.resolve(
           provider: provider.name,
@@ -154,8 +165,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
     }
   }
 
-  /// Captures runtime player errors (e.g. codec/decode failures) on the last
-  /// native controller; the exact failure is folded into the fallback notice.
+  /// Captures runtime player errors (e.g. codec/decode failures). The current
+  /// native controller is disposed and the next provider is tried, so a source
+  /// that initializes but fails at decode time is automatically superseded.
   void _onNativeVideoListener() {
     final video = _video;
     if (video == null || _mode != _PlayerMode.native) return;
@@ -163,7 +175,21 @@ class _PlayerScreenState extends State<PlayerScreen> {
       final reason = video.value.errorDescription ?? 'Unknown player error';
       _failures.add('$_nativeLabel: $reason');
       debugPrint('[player] native error: $reason');
+      unawaited(_retryAfterRuntimeError());
     }
+  }
+
+  Future<void> _retryAfterRuntimeError() async {
+    final broken = _video;
+    setState(() {
+      _video = null;
+      _mode = _PlayerMode.loading;
+    });
+    if (broken != null) {
+      broken.dispose();
+    }
+    if (!mounted) return;
+    await _tryNextProvider();
   }
 
   void _fallbackToEmbed({String? notice}) {
