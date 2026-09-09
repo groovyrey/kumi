@@ -7,10 +7,13 @@ import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 
 import '../config.dart';
 import '../models/media_item.dart';
+import '../models/series_details.dart';
+import '../models/tv_season.dart';
 import '../services/favorites.dart';
 import '../services/tmdb_service.dart';
 import '../services/watch_history.dart';
 import '../theme/app_theme.dart';
+import '../widgets/web_controls.dart';
 import 'player_screen.dart';
 
 /// Title page: a hero banner that plays the trailer in a muted loop when one
@@ -29,10 +32,16 @@ class _DetailScreenState extends State<DetailScreen> {
   final TmdbService _tmdb = TmdbService();
 
   String? _trailerKey;
+  List<TvSeason>? _seasons;
+  EpisodeAir? _nextEpisode;
+  int _season = 1;
+  int _episode = 1;
 
   MediaItem get item => widget.item;
 
   String get _mediaParam => item.mediaType == 'tv' ? 'tvplay' : 'movie';
+
+  bool get _isTv => item.mediaType == 'tv';
 
   /// True for movies whose release date is still in the future — nothing is
   /// playable until then, so the play and source buttons are replaced by an
@@ -49,6 +58,7 @@ class _DetailScreenState extends State<DetailScreen> {
   void initState() {
     super.initState();
     _loadTrailer();
+    if (_isTv) _loadSeasons();
   }
 
   Future<void> _loadTrailer() async {
@@ -62,8 +72,59 @@ class _DetailScreenState extends State<DetailScreen> {
     setState(() => _trailerKey = key);
   }
 
-  void _play(BuildContext context, {String? provider, bool forceEmbed = false}) {
-    WatchHistory.instance.record(item);
+  Future<void> _loadSeasons() async {
+    List<TvSeason> seasons;
+    EpisodeAir? upcoming;
+    try {
+      final results = await Future.wait([
+        _tmdb.tvSeasons(item.id),
+        _tmdb.seriesDetails(item.id),
+      ]);
+      seasons = results[0] as List<TvSeason>;
+      final details = results[1] as SeriesDetails?;
+      final next = details?.nextEpisodeToAir;
+      final today = DateTime.now();
+      upcoming =
+          (next != null &&
+                  next.season != null &&
+                  next.episode != null &&
+                  next.airDate.isNotEmpty &&
+                  DateTime.tryParse(next.airDate) != null &&
+                  !DateTime.parse(next.airDate).isBefore(
+                      DateTime(today.year, today.month, today.day)))
+              ? next
+              : null;
+    } catch (_) {
+      seasons = const [];
+    }
+    if (!mounted) return;
+    setState(() {
+      _seasons = seasons;
+      _nextEpisode = upcoming;
+      if (seasons.isNotEmpty) {
+        _season = seasons.first.number;
+        _episode = _firstEpisodeOf(seasons.first.number);
+      }
+    });
+  }
+
+  int _firstEpisodeOf(int season) {
+    for (final s in _seasons ?? const <TvSeason>[]) {
+      if (s.number == season && s.episodes.isNotEmpty) {
+        return s.episodes.first.number;
+      }
+    }
+    return 1;
+  }
+
+  void _play(
+    BuildContext context, {
+    String? provider,
+    bool forceEmbed = false,
+    int? season,
+    int? episode,
+  }) {
+    WatchHistory.instance.record(item, season: season, episode: episode);
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -71,6 +132,8 @@ class _DetailScreenState extends State<DetailScreen> {
           title: item.title,
           id: item.id,
           media: _mediaParam,
+          season: season ?? _season,
+          episode: episode ?? _episode,
           preferredProvider: provider,
           forceEmbed: forceEmbed,
         ),
@@ -188,6 +251,10 @@ class _DetailScreenState extends State<DetailScreen> {
                       _comingSoonCard(context, item.releaseDate)
                     else
                       _playButton(context),
+                    if (_isTv) ...[
+                      const SizedBox(height: 28),
+                      _seasonsSection(context),
+                    ],
                     const SizedBox(height: 24),
                     Text(
                       'Overview',
@@ -266,6 +333,9 @@ class _DetailScreenState extends State<DetailScreen> {
   }
 
   Widget _playButton(BuildContext context) {
+    final label = _seasons == null || _seasons!.isEmpty
+        ? 'Play Now'
+        : 'Play S$_season · E$_episode';
     return SizedBox(
       width: double.infinity,
       child: FilledButton.icon(
@@ -280,7 +350,7 @@ class _DetailScreenState extends State<DetailScreen> {
         ),
         icon: Icon(PhosphorIcons.play(), size: 30),
         label: Text(
-          'Play Now',
+          label,
           style: context.appTextTheme.titleMedium?.copyWith(
             color: context.appOnAccent,
             fontWeight: FontWeight.w600,
@@ -288,6 +358,167 @@ class _DetailScreenState extends State<DetailScreen> {
         ),
       ),
     );
+  }
+
+  Widget _seasonsSection(BuildContext context) {
+    if (_seasons == null && _nextEpisode == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+        ),
+      );
+    }
+    final seasons = _seasons ?? const <TvSeason>[];
+    final episodes = _episodesOf(_season);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Seasons & episodes',
+          style: context.appTextTheme.headlineSmall?.copyWith(
+            color: context.appOnSurface,
+          ),
+        ),
+        const SizedBox(height: 8),
+        if (seasons.isEmpty && _nextEpisode == null)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Text(
+              'Episodes are not available yet.',
+              style: context.appTextTheme.bodyMedium,
+            ),
+          )
+        else
+          SurfaceCard(
+            padding: EdgeInsets.zero,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (_nextEpisode != null)
+                  _upcomingEpisode(context, _nextEpisode!),
+                if (seasons.length > 1) ...[
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+                    child: Row(
+                      children: [
+                        for (final season in seasons) ...[
+                          _SeasonChip(
+                            label: season.name == 'Season ${season.number}'
+                                ? 'S${season.number}'
+                                : season.name,
+                            selected: season.number == _season,
+                            onTap: () => setState(() {
+                              _season = season.number;
+                              _episode = _firstEpisodeOf(season.number);
+                            }),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                      ],
+                    ),
+                  ),
+                  Divider(height: 1, color: AppColors.cardBorder),
+                ],
+                if (episodes.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      'No episodes listed for this season yet.',
+                      style: context.appTextTheme.bodyMedium,
+                    ),
+                  )
+                else
+                  for (final episode in episodes)
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _EpisodeTile(
+                          season: _season,
+                          episode: episode,
+                          onTap: () => _play(context,
+                              season: _season, episode: episode.number),
+                        ),
+                        if (episode != episodes.last)
+                          Divider(height: 1, color: AppColors.cardBorder),
+                      ],
+                    ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _upcomingEpisode(BuildContext context, EpisodeAir next) {
+    final season = next.season ?? 1;
+    final episode = next.episode ?? 1;
+    final airDate = next.airDate;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        color: context.appAccentSoft,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: context.appAccent.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: context.appAccent,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              'UPCOMING',
+              style: context.appTextTheme.labelSmall?.copyWith(
+                color: context.appOnAccent,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.6,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'S$season · E$episode  '
+                  '${next.name.isEmpty ? '' : '· ${next.name}'}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.appTextTheme.bodyMedium?.copyWith(
+                    color: context.appOnSurface,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Airs $_airDate',
+                  style: context.appTextTheme.bodySmall?.copyWith(
+                    color: context.appOnSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<TvEpisode> _episodesOf(int season) {
+    for (final s in _seasons ?? const <TvSeason>[]) {
+      if (s.number == season) return s.episodes;
+    }
+    return const [];
   }
 
   Widget _comingSoonCard(BuildContext context, String releaseDate) {
@@ -512,5 +743,131 @@ class _SourceButton extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// A tappable season pill in the seasons & episodes card.
+class _SeasonChip extends StatelessWidget {
+  const _SeasonChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            color: selected
+                ? context.appAccent
+                : context.appAccentSoft.withValues(alpha: 0.35),
+            borderRadius: BorderRadius.circular(8),
+            border: selected
+                ? null
+                : Border.all(color: AppColors.cardBorder),
+          ),
+          child: Text(
+            label,
+            style: context.appTextTheme.labelSmall?.copyWith(
+              color: selected ? context.appOnAccent : context.appOnSurface,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A single episode row. Tapping it starts playback of that episode right
+/// away; the trailing play icon signals it is watchable now.
+class _EpisodeTile extends StatelessWidget {
+  const _EpisodeTile({
+    required this.season,
+    required this.episode,
+    required this.onTap,
+  });
+
+  final int season;
+  final TvEpisode episode;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(4),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: context.appAccentSoft,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                'E${episode.number}',
+                style: context.appTextTheme.labelSmall?.copyWith(
+                  color: context.appAccent,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    episode.name.isEmpty
+                        ? 'Episode ${episode.number}'
+                        : episode.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.appTextTheme.bodyMedium?.copyWith(
+                      color: context.appOnSurface,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    _metadataLine(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.appTextTheme.bodySmall?.copyWith(
+                      color: context.appOnSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            Icon(PhosphorIcons.play(), size: 18, color: context.appAccent),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _metadataLine() {
+    final parts = <String>[
+      if (episode.airDate.isNotEmpty) episode.airDate,
+      if (episode.rating > 0) '${episode.rating.toStringAsFixed(1)} rating',
+    ];
+    return parts.isEmpty ? 'Season $season' : parts.join(' · ');
   }
 }

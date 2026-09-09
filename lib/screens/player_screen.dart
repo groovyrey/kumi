@@ -13,6 +13,7 @@ import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
 
 import '../config.dart';
 import '../services/resolver_service.dart';
+import '../services/watch_history.dart';
 import '../state/app_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/embed_ad_guard.dart';
@@ -27,6 +28,8 @@ class PlayerScreen extends StatefulWidget {
     required this.title,
     required this.id,
     required this.media,
+    this.season = 1,
+    this.episode = 1,
     this.preferredProvider,
     this.forceEmbed = false,
   });
@@ -34,6 +37,10 @@ class PlayerScreen extends StatefulWidget {
   final String title;
   final int id;
   final String media;
+
+  /// For TV titles: the season and episode selected on the info page.
+  final int season;
+  final int episode;
 
   /// When set, this native provider ('vidlink' | 'vidlove') is tried first.
   final String? preferredProvider;
@@ -74,6 +81,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
   bool _keepAwake = true;
   String _quality = 'auto';
 
+  // Resume / progress tracking for the native player.
+  Duration? _resumePosition;
+  StreamSubscription<Duration>? _positionSub;
+  StreamSubscription<void>? _completedSub;
+  Duration _lastPosition = Duration.zero;
+  DateTime _lastSaveAt = DateTime.fromMillisecondsSinceEpoch(0);
+
   @override
   void initState() {
     super.initState();
@@ -87,13 +101,30 @@ class _PlayerScreenState extends State<PlayerScreen> {
     _sourceOrder = app.sourceOrder;
     _keepAwake = app.keepAwake;
     _quality = app.quality.value;
+    unawaited(_loadResume());
     _start();
+  }
+
+  Future<void> _loadResume() async {
+    await WatchHistory.instance.ensureLoaded();
+    if (!mounted) return;
+    _resumePosition = WatchHistory.instance.resumePosition(
+      widget.id,
+      _type,
+      season: widget.season,
+      episode: widget.episode,
+    );
   }
 
   @override
   void dispose() {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     unawaited(WakelockPlus.disable());
+    unawaited(_saveFinalProgress());
+    unawaited(_positionSub?.cancel());
+    unawaited(_completedSub?.cancel());
+    _positionSub = null;
+    _completedSub = null;
     _hideTimer?.cancel();
     unawaited(_errorSub?.cancel());
     _errorSub = null;
@@ -105,11 +136,81 @@ class _PlayerScreenState extends State<PlayerScreen> {
     super.dispose();
   }
 
+  Future<void> _saveFinalProgress() async {
+    if (_lastPosition > const Duration(seconds: 5)) {
+      await _saveProgress(_lastPosition);
+      _lastPosition = Duration.zero;
+    }
+  }
+
+  Future<void> _saveProgress(Duration position) async {
+    if (position < const Duration(seconds: 5)) return;
+    final duration = _player?.state.duration ?? Duration.zero;
+    if (duration > Duration.zero &&
+        position >= duration - const Duration(seconds: 15)) {
+      await WatchHistory.instance.clearProgress(
+        widget.id,
+        _type,
+        season: widget.season,
+        episode: widget.episode,
+      );
+      return;
+    }
+    await WatchHistory.instance.updateProgress(
+      widget.id,
+      _type,
+      season: widget.season,
+      episode: widget.episode,
+      position: position,
+    );
+  }
+
+  /// Seeks to the saved position once the video actually starts playing.
+  /// Waiting on `playing` avoids seeking while the buffer is still warming
+  /// up, and overriding a manual seek while still near the start is avoided.
+  Future<void> _seekAfterOpen(Player player) async {
+    var resume = _resumePosition;
+    if (resume == null) {
+      await WatchHistory.instance.ensureLoaded();
+      if (!mounted || !identical(_player, player)) return;
+      resume = WatchHistory.instance.resumePosition(
+        widget.id,
+        _type,
+        season: widget.season,
+        episode: widget.episode,
+      );
+      _resumePosition = resume;
+    }
+    if (resume == null || resume <= const Duration(seconds: 5)) return;
+    final playing = Completer<void>();
+    late final StreamSubscription<bool> sub;
+    sub = player.stream.playing.listen((value) {
+      if (value && !playing.isCompleted) playing.complete();
+    });
+    try {
+      await Future.any<void>([
+        playing.future,
+        Future<void>.delayed(const Duration(seconds: 3)),
+      ]);
+    } finally {
+      await sub.cancel();
+    }
+    if (!mounted || !identical(_player, player)) return;
+    if (player.state.position < const Duration(seconds: 8)) {
+      player.seek(resume);
+    }
+  }
+
   String get _type => widget.media == 'tvplay' ? 'tv' : 'movie';
 
   String _embedUrl() {
     final src = EmbedSources.sources.first;
-    return src.$2(id: widget.id, media: widget.media);
+    return src.$2(
+      id: widget.id,
+      media: widget.media,
+      season: widget.season,
+      episode: widget.episode,
+    );
   }
 
   List<({String name, String label})> _providers = const [];
@@ -149,6 +250,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
           provider: provider.name,
           type: _type,
           id: widget.id,
+          season: widget.season,
+          episode: widget.episode,
           quality: _quality,
         );
         if (!mounted) return;
@@ -205,6 +308,19 @@ class _PlayerScreenState extends State<PlayerScreen> {
         _videoController = controller;
         _mode = _PlayerMode.native;
       });
+      _lastPosition = Duration.zero;
+      _positionSub?.cancel();
+      _positionSub = player.stream.position.listen(_onNativePosition);
+      _completedSub?.cancel();
+      _completedSub = player.stream.completed.listen((_) {
+        unawaited(WatchHistory.instance.clearProgress(
+          widget.id,
+          _type,
+          season: widget.season,
+          episode: widget.episode,
+        ));
+      });
+      if (_resumePosition != null) unawaited(_seekAfterOpen(player));
       if (_defaultRate != 1.0) unawaited(player.setRate(_defaultRate));
       _applyPreferredSubtitle(player);
       if (_keepAwake) unawaited(WakelockPlus.enable());
@@ -216,6 +332,14 @@ class _PlayerScreenState extends State<PlayerScreen> {
       unawaited(player.dispose());
       return false;
     }
+  }
+
+  void _onNativePosition(Duration position) {
+    _lastPosition = position;
+    final now = DateTime.now();
+    if (now.difference(_lastSaveAt).inSeconds < 8) return;
+    _lastSaveAt = now;
+    unawaited(_saveProgress(position));
   }
 
   /// When the user set a preferred subtitle language in Settings, pick the

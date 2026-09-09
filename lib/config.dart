@@ -34,9 +34,17 @@ class EmbedSources {
   EmbedSources._();
 
   static final List<
-      (String name, String Function({required int id, required String media}))>
+      (String name, String Function({
+        required int id,
+        required String media,
+        int season,
+        int episode,
+      }))>
       sources = [
-    ('CineSrc', ({required id, required media}) =>
-        'https://cinesrc.st/embed/${media == 'tvplay' ? 'tv' : 'movie'}/$id'),
+    ('CineSrc', ({required id, required media, season = 1, episode = 1}) {
+      final kind = media == 'tvplay' ? 'tv' : 'movie';
+      final base = 'https://cinesrc.st/embed/$kind/$id';
+      return media == 'tvplay' ? '$base/$season/$episode' : base;
+    }),
   ];
 }

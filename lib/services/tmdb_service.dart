@@ -6,6 +6,7 @@ import '../config.dart';
 import '../models/genre.dart';
 import '../models/media_item.dart';
 import '../models/series_details.dart';
+import '../models/tv_season.dart';
 
 /// A single TMDB page of results plus paging metadata for incremental loads.
 class MediaPage {
@@ -93,6 +94,50 @@ class TmdbService {
     if (res.statusCode != 200) return null;
     final data = jsonDecode(res.body) as Map<String, dynamic>;
     return SeriesDetails.fromJson(data);
+  }
+
+  /// Every season of a series together with its episodes, or an empty list
+  /// when nothing can be loaded. Season metadata comes from `/tv/{id}` and
+  /// the episode lists are fetched per season in parallel.
+  Future<List<TvSeason>> tvSeasons(int id) async {
+    final res = await _client.get(_uri('/$_tv/$id'));
+    if (res.statusCode != 200) return const [];
+    final data = jsonDecode(res.body) as Map<String, dynamic>;
+    final metadata = <(int, String)>[];
+    for (final entry in (data['seasons'] as List? ?? const [])) {
+      final season = (entry as Map).cast<String, dynamic>();
+      final number = season['season_number'] as int? ?? 0;
+      if (number < 1) continue;
+      metadata.add((
+        number,
+        season['name'] as String? ?? 'Season $number',
+      ));
+    }
+    if (metadata.isEmpty) return const [];
+
+    final loaded = await Future.wait([
+      for (final (number, name) in metadata)
+        _seasonEpisodes(id, number)
+            .then(
+              (episodes) =>
+                  TvSeason(number: number, name: name, episodes: episodes),
+              onError: (Object _) =>
+                  TvSeason(number: number, name: name, episodes: const []),
+            ),
+    ]);
+    return [for (final season in loaded) if (season.episodes.isNotEmpty) season];
+  }
+
+  Future<List<TvEpisode>> _seasonEpisodes(int id, int season) async {
+    final res = await _client.get(_uri('/$_tv/$id/season/$season'));
+    if (res.statusCode != 200) return const [];
+    final data = jsonDecode(res.body) as Map<String, dynamic>;
+    final raw = data['episodes'] as List? ?? const [];
+    return [
+      for (final e in raw)
+        if (e is Map)
+          TvEpisode.fromJson((e as Map).cast<String, dynamic>()),
+    ];
   }
 
   Future<MediaPage> searchPage(String query, {int page = 1}) async {
