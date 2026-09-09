@@ -11,8 +11,8 @@ class AppConfig {
 }
 
 /// Native direct-file sources. These resolve to a playable MP4 or proxied HLS
-/// URL through the resolver worker and are played with the platform video
-/// player (`video_player`) — no WebView, no in-page ads.
+/// URL through the resolver worker and are played with the media_kit player
+/// (libmpv, with software decode fallback) — no WebView, no in-page ads.
 class NativeSources {
   NativeSources._();
 

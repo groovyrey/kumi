@@ -20,7 +20,9 @@ dependencies:
   url_launcher: ^6.3.1
   package_info_plus: ^10.2.1
   phosphor_flutter: ^2.0.2
-  video_player: ^2.9.2
+  media_kit: ^1.2.6
+  media_kit_video: ^2.0.1
+  media_kit_libs_video: ^1.0.7
 
 dev_dependencies:
   flutter_test:

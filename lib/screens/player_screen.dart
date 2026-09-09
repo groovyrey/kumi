@@ -2,8 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:video_player/video_player.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import 'package:webview_flutter_wkwebview/webview_flutter_wkwebview.dart';
@@ -14,10 +15,9 @@ import '../theme/app_theme.dart';
 import '../widgets/embed_ad_guard.dart';
 
 /// Immersive full-screen player. Native direct-file sources (VidLink,
-/// 111Movies) are resolved through the worker and played with the platform
-/// video player. When no native source resolves for a title, playback falls
-/// back to the CineSrc embed in the WebView with the ad layer stripped by the
-/// guard.
+/// 111Movies) are resolved through the worker and played with media_kit. When
+/// no native source resolves for a title, playback falls back to the CineSrc
+/// embed in the WebView with the ad layer stripped by the guard.
 class PlayerScreen extends StatefulWidget {
   const PlayerScreen({
     super.key,
@@ -46,7 +46,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
   final ResolverService _resolver = ResolverService();
 
   _PlayerMode _mode = _PlayerMode.loading;
-  VideoPlayerController? _video;
+  Player? _player;
+  VideoController? _videoController;
+  StreamSubscription<String>? _errorSub;
   WebViewController? _web;
   String _nativeLabel = '';
   String _fallbackNotice = '';
@@ -66,10 +68,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
   void dispose() {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     _hideTimer?.cancel();
+    unawaited(_errorSub?.cancel());
+    _errorSub = null;
     EmbedAdGuard.detach();
-    final video = _video;
-    _video = null;
-    if (video != null) unawaited(video.dispose());
+    final player = _player;
+    _player = null;
+    _videoController = null;
+    if (player != null) unawaited(player.dispose());
     super.dispose();
   }
 
@@ -134,60 +139,64 @@ class _PlayerScreenState extends State<PlayerScreen> {
     );
   }
 
-  /// Starts native playback; returns true when the video actually initialized.
+  /// Starts native playback; returns true when the media actually opened.
   Future<bool> _playNative(ResolvedSource source, String label) async {
-    final video = VideoPlayerController.networkUrl(
-      Uri.parse(source.playUrl),
+    final player = Player();
+    final controller = VideoController(
+      player,
+      // Software decode avoids MediaCodec failures seen on some devices with
+      // both H.264 and HEVC hardware decoding.
+      configuration: const VideoControllerConfiguration(
+        enableHardwareAcceleration: false,
+      ),
     );
+    final errorSub = player.stream.error.listen((message) {
+      if (!mounted || !identical(_player, player)) return;
+      _failures.add('$label: $message');
+      debugPrint('[player] native error: $message');
+      unawaited(_retryAfterRuntimeError());
+    });
+    _errorSub = errorSub;
     setState(() {
       _mode = _PlayerMode.loading;
       _nativeLabel = label;
       _nativeFailed = false;
     });
     try {
-      await video.initialize();
+      await player.open(Media(source.playUrl));
       if (!mounted) {
-        video.dispose();
+        unawaited(errorSub.cancel());
+        unawaited(player.dispose());
         return false;
       }
       setState(() {
-        _video = video;
+        _player = player;
+        _videoController = controller;
         _mode = _PlayerMode.native;
       });
-      video.addListener(_onNativeVideoListener);
-      unawaited(video.play());
       _scheduleHide();
       return true;
     } catch (error) {
       _failures.add('$label: $error');
-      if (mounted) video.dispose();
+      unawaited(errorSub.cancel());
+      unawaited(player.dispose());
       return false;
     }
   }
 
-  /// Captures runtime player errors (e.g. codec/decode failures). The current
-  /// native controller is disposed and the next provider is tried, so a source
-  /// that initializes but fails at decode time is automatically superseded.
-  void _onNativeVideoListener() {
-    final video = _video;
-    if (video == null || _mode != _PlayerMode.native) return;
-    if (video.value.hasError || video.value.errorDescription != null) {
-      final reason = video.value.errorDescription ?? 'Unknown player error';
-      _failures.add('$_nativeLabel: $reason');
-      debugPrint('[player] native error: $reason');
-      unawaited(_retryAfterRuntimeError());
-    }
-  }
-
+  /// Tears down the failed native player and tries the next provider, so a
+  /// source that opens but fails at decode time is automatically superseded.
   Future<void> _retryAfterRuntimeError() async {
-    final broken = _video;
+    final broken = _player;
+    final brokenSub = _errorSub;
     setState(() {
-      _video = null;
+      _player = null;
+      _videoController = null;
       _mode = _PlayerMode.loading;
     });
-    if (broken != null) {
-      broken.dispose();
-    }
+    _errorSub = null;
+    unawaited(brokenSub?.cancel());
+    await broken?.dispose();
     if (!mounted) return;
     await _tryNextProvider();
   }
@@ -259,17 +268,19 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   Widget _videoBody() {
-    final video = _video;
-    final val = video?.value;
-    if (video == null || val == null || !val.isInitialized) {
+    final player = _player;
+    final controller = _videoController;
+    if (player == null || controller == null) {
       return const Center(
         child: CircularProgressIndicator(color: Colors.white),
       );
     }
     return Center(
-      child: AspectRatio(
-        aspectRatio: val.aspectRatio,
-        child: VideoPlayer(video),
+      child: Video(
+        controller: controller,
+        controls: NoVideoControls,
+        fit: BoxFit.contain,
+        fill: const Color(0xFF000000),
       ),
     );
   }
