@@ -50,6 +50,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   WebViewController? _web;
   String _nativeLabel = '';
   String _fallbackNotice = '';
+  final List<String> _failures = [];
   bool _nativeFailed = false;
   bool _controlsVisible = true;
   Timer? _hideTimer;
@@ -110,15 +111,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
         final started = await _playNative(source, provider.label);
         if (!mounted) return;
         if (started) return;
-      } catch (_) {
+      } catch (error) {
         if (!mounted) return;
-        // Try the next provider.
+        _failures.add('${provider.label}: $error');
       }
     }
     if (!mounted) return;
     _fallbackToEmbed(
       notice:
-          'None of the direct sources could play — using the embed source instead.',
+          'None of the direct sources could play (${_failures.join('; ')}) — using the embed source instead.',
     );
   }
 
@@ -142,12 +143,26 @@ class _PlayerScreenState extends State<PlayerScreen> {
         _video = video;
         _mode = _PlayerMode.native;
       });
+      video.addListener(_onNativeVideoListener);
       unawaited(video.play());
       _scheduleHide();
       return true;
-    } catch (_) {
+    } catch (error) {
+      _failures.add('$label: $error');
       if (mounted) video.dispose();
       return false;
+    }
+  }
+
+  /// Captures runtime player errors (e.g. codec/decode failures) on the last
+  /// native controller; the exact failure is folded into the fallback notice.
+  void _onNativeVideoListener() {
+    final video = _video;
+    if (video == null || _mode != _PlayerMode.native) return;
+    if (video.value.hasError || video.value.errorDescription != null) {
+      final reason = video.value.errorDescription ?? 'Unknown player error';
+      _failures.add('$_nativeLabel: $reason');
+      debugPrint('[player] native error: $reason');
     }
   }
 
