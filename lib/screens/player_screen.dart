@@ -796,7 +796,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                             : null,
                         onTap: () {
                           Navigator.pop(sheetContext);
-                          unawaited(player.setAudioTrack(audio.id));
+                          unawaited(player.setAudioTrack(audio));
                         },
                       ),
                     const SizedBox(height: 8),
