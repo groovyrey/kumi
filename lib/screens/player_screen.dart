@@ -56,6 +56,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
   bool _nativeFailed = false;
   bool _controlsVisible = true;
   Timer? _hideTimer;
+  double? _dragSeconds;
+  String? _nativeSourceName;
 
   @override
   void initState() {
@@ -96,20 +98,18 @@ class _PlayerScreenState extends State<PlayerScreen> {
       _fallbackToEmbed();
       return;
     }
-    var providers = NativeSources.providers;
-    final preferred = widget.preferredProvider;
-    if (preferred != null) {
-      final others = providers
-          .where((p) => p.name != preferred)
-          .toList();
-      final preferredItem =
-          providers.where((p) => p.name == preferred).firstOrNull;
-      providers = [
-        if (preferredItem != null) preferredItem,
-        ...others,
-      ];
-    }
-    _providers = providers;
+    await _startWithPreferred(widget.preferredProvider);
+  }
+
+  /// Rebuilds the native provider queue with [preferred] first and runs it.
+  /// Also used when the user switches source mid-playback.
+  Future<void> _startWithPreferred(String? preferred) async {
+    _providers = [
+      for (final p in NativeSources.providers)
+        if (p.name == preferred) p,
+      for (final p in NativeSources.providers)
+        if (p.name != preferred) p,
+    ];
     _providerIndex = 0;
     await _tryNextProvider();
   }
@@ -124,7 +124,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
           id: widget.id,
         );
         if (!mounted) return;
-        final started = await _playNative(source, provider.label);
+        final started = await _playNative(source, provider.name, provider.label);
         if (!mounted) return;
         if (started) return;
       } catch (error) {
@@ -140,7 +140,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   }
 
   /// Starts native playback; returns true when the media actually opened.
-  Future<bool> _playNative(ResolvedSource source, String label) async {
+  Future<bool> _playNative(ResolvedSource source, String name, String label) async {
     final player = Player();
     final controller = VideoController(
       player,
@@ -160,6 +160,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     setState(() {
       _mode = _PlayerMode.loading;
       _nativeLabel = label;
+      _nativeSourceName = name;
       _nativeFailed = false;
     });
     try {
@@ -192,6 +193,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     setState(() {
       _player = null;
       _videoController = null;
+      _nativeSourceName = null;
       _mode = _PlayerMode.loading;
     });
     _errorSub = null;
@@ -199,6 +201,104 @@ class _PlayerScreenState extends State<PlayerScreen> {
     await broken?.dispose();
     if (!mounted) return;
     await _tryNextProvider();
+  }
+
+  /// The name of the source currently on screen ('vidlink' | 'vidlove' |
+  /// 'CineSrc'), used to highlight the active item in the switch sheet.
+  String? _currentSourceName() {
+    if (_mode == _PlayerMode.embed) return EmbedSources.sources.first.$1;
+    if (_mode == _PlayerMode.native) return _nativeSourceName;
+    return null;
+  }
+
+  /// Tears down whatever is playing and starts the requested source over.
+  void _switchSource(String name) {
+    if (name == _currentSourceName()) return;
+    _hideTimer?.cancel();
+    final broken = _player;
+    final brokenSub = _errorSub;
+    setState(() {
+      _failures.clear();
+      _nativeFailed = false;
+      _fallbackNotice = '';
+      _player = null;
+      _videoController = null;
+      _nativeSourceName = null;
+      _web = null;
+      _mode = _PlayerMode.loading;
+    });
+    _errorSub = null;
+    unawaited(brokenSub?.cancel());
+    unawaited(broken?.dispose());
+    if (name == EmbedSources.sources.first.$1) {
+      _fallbackToEmbed();
+    } else {
+      unawaited(_startWithPreferred(name));
+    }
+  }
+
+  void _showSourceSheet(BuildContext context) {
+    final current = _currentSourceName();
+    final items = [
+      for (final p in NativeSources.providers)
+        (name: p.name, label: p.label, current: p.name == current),
+      (
+        name: EmbedSources.sources.first.$1,
+        label: EmbedSources.sources.first.$1,
+        current: EmbedSources.sources.first.$1 == current,
+      ),
+    ];
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: context.appSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Switch source',
+                  style: context.appTextTheme.titleMedium?.copyWith(
+                    color: context.appOnSurface,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+            for (final item in items)
+              ListTile(
+                leading: Icon(
+                  item.current
+                      ? PhosphorIcons.checkCircle()
+                      : PhosphorIcons.playCircle(),
+                  color: item.current
+                      ? context.appAccent
+                      : context.appOnSurfaceVariant,
+                ),
+                title: Text(
+                  item.label,
+                  style: context.appTextTheme.bodyMedium?.copyWith(
+                    color: context.appOnSurface,
+                  ),
+                ),
+                trailing:
+                    item.current ? Icon(PhosphorIcons.check(), color: context.appAccent) : null,
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  if (!item.current) _switchSource(item.name);
+                },
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
   }
 
   void _fallbackToEmbed({String? notice}) {
@@ -267,6 +367,205 @@ class _PlayerScreenState extends State<PlayerScreen> {
     });
   }
 
+  String _fmtTime(Duration d) {
+    final h = d.inHours;
+    final m = d.inMinutes.remainder(60);
+    final s = d.inSeconds.remainder(60);
+    String two(int v) => v.toString().padLeft(2, '0');
+    return h > 0 ? '$h:${two(m)}:${two(s)}' : '${two(m)}:${two(s)}';
+  }
+
+  Widget _bottomControls(BuildContext context) {
+    final player = _player;
+    if (_mode != _PlayerMode.native || player == null) {
+      return const SizedBox.shrink();
+    }
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.bottomCenter,
+          end: Alignment.topCenter,
+          colors: [
+            Colors.black.withValues(alpha: 0.85),
+            Colors.transparent,
+          ],
+        ),
+      ),
+      padding: const EdgeInsets.only(left: 8, right: 16, top: 18, bottom: 8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              _playPauseButton(context, player),
+              const SizedBox(width: 4),
+              Expanded(child: _seekBar(context, player)),
+            ],
+          ),
+          Row(
+            children: [
+              _timeText(context, player.stream.position, player.state.position),
+              const SizedBox(width: 8),
+              _speedButton(context, player),
+              const Spacer(),
+              _timeText(context, player.stream.duration, player.state.duration),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _timeText(
+    BuildContext context,
+    Stream<Duration> stream,
+    Duration initial,
+  ) {
+    return StreamBuilder<Duration>(
+      stream: stream,
+      initialData: initial,
+      builder: (context, snap) {
+        final value = snap.data ?? Duration.zero;
+        return Text(
+          _fmtTime(value),
+          style: context.appTextTheme.bodySmall?.copyWith(color: Colors.white70),
+        );
+      },
+    );
+  }
+
+  Widget _playPauseButton(BuildContext context, Player player) {
+    return StreamBuilder<bool>(
+      stream: player.stream.playing,
+      initialData: player.state.playing,
+      builder: (context, snap) {
+        final playing = snap.data ?? player.state.playing;
+        final completed = player.state.completed;
+        return IconButton(
+          padding: EdgeInsets.zero,
+          visualDensity: VisualDensity.compact,
+          iconSize: 44,
+          onPressed: () {
+            _hideTimer?.cancel();
+            if (completed) {
+              unawaited(player.seek(Duration.zero));
+              unawaited(player.play());
+            } else {
+              unawaited(player.playOrPause());
+            }
+            _scheduleHide();
+          },
+          icon: Icon(
+            completed
+                ? PhosphorIcons.arrowsClockwise()
+                : (playing
+                    ? PhosphorIcons.pause()
+                    : PhosphorIcons.play()),
+            color: Colors.white,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _seekBar(BuildContext context, Player player) {
+    return StreamBuilder<Duration>(
+      stream: player.stream.position,
+      initialData: player.state.position,
+      builder: (context, snapPos) {
+        return StreamBuilder<Duration>(
+          stream: player.stream.duration,
+          initialData: player.state.duration,
+          builder: (context, snapDur) {
+            final duration = snapDur.data ?? Duration.zero;
+            final max = duration.inMilliseconds > 0
+                ? duration.inMilliseconds.toDouble()
+                : 1.0;
+            final drag = _dragSeconds;
+            final value = (drag != null
+                    ? drag * 1000
+                    : (snapPos.data ?? Duration.zero).inMilliseconds.toDouble())
+                .clamp(0.0, max);
+            return Slider(
+              value: value,
+              min: 0,
+              max: max,
+              activeColor: context.appAccent,
+              inactiveColor: Colors.white24,
+              onChangeStart: (_) => _hideTimer?.cancel(),
+              onChanged: (v) => setState(() => _dragSeconds = v / 1000),
+              onChangeEnd: (v) {
+                setState(() => _dragSeconds = null);
+                unawaited(player.seek(Duration(milliseconds: v.round())));
+                _scheduleHide();
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showSpeedMenu(BuildContext context, Player player) {
+    const speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: context.appSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final s in speeds)
+              ListTile(
+                title: Text(
+                  '${s.toStringAsFixed(2)}x',
+                  style: context.appTextTheme.bodyMedium?.copyWith(
+                    color: context.appOnSurface,
+                  ),
+                ),
+                trailing: player.state.rate == s
+                    ? Icon(PhosphorIcons.check(), color: context.appAccent)
+                    : null,
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  unawaited(player.setRate(s));
+                },
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _speedButton(BuildContext context, Player player) {
+    return StreamBuilder<double>(
+      stream: player.stream.rate,
+      initialData: player.state.rate,
+      builder: (context, snap) {
+        final rate = snap.data ?? 1.0;
+        return InkWell(
+          onTap: () => _showSpeedMenu(context, player),
+          borderRadius: BorderRadius.circular(6),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            child: Text(
+              '${rate.toStringAsFixed(2)}x',
+              style: context.appTextTheme.labelMedium?.copyWith(
+                color: Colors.white70,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _videoBody() {
     final player = _player;
     final controller = _videoController;
@@ -303,12 +602,30 @@ class _PlayerScreenState extends State<PlayerScreen> {
                   right: 12,
                   child: _fallbackBanner(context),
                 ),
-              IgnorePointer(
-                ignoring: !_controlsVisible,
-                child: AnimatedOpacity(
-                  opacity: _controlsVisible ? 1 : 0,
-                  duration: const Duration(milliseconds: 200),
-                  child: _topBar(context),
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: IgnorePointer(
+                  ignoring: !_controlsVisible,
+                  child: AnimatedOpacity(
+                    opacity: _controlsVisible ? 1 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: _topBar(context),
+                  ),
+                ),
+              ),
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: IgnorePointer(
+                  ignoring: !_controlsVisible,
+                  child: AnimatedOpacity(
+                    opacity: _controlsVisible ? 1 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: _bottomControls(context),
+                  ),
                 ),
               ),
             ],
@@ -369,55 +686,61 @@ class _PlayerScreenState extends State<PlayerScreen> {
     final subtitle = _mode == _PlayerMode.native
         ? 'Playing via $_nativeLabel'
         : null;
-    return Align(
-      alignment: Alignment.topCenter,
-      child: Container(
-        width: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Colors.black.withValues(alpha: 0.85),
-              Colors.transparent,
-            ],
-          ),
-        ),
-        padding: const EdgeInsets.only(left: 4, right: 16, top: 6, bottom: 18),
-        child: Row(
-          children: [
-            IconButton(
-              onPressed: () => Navigator.pop(context),
-              icon: Icon(PhosphorIcons.arrowLeft(), color: Colors.white, size: 26),
-            ),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: context.appTextTheme.titleLarge?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  if (subtitle != null)
-                    Text(
-                      subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: context.appTextTheme.bodySmall?.copyWith(
-                        color: Colors.white70,
-                      ),
-                    ),
-                ],
-              ),
-            ),
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.black.withValues(alpha: 0.85),
+            Colors.transparent,
           ],
         ),
+      ),
+      padding: const EdgeInsets.only(left: 4, right: 8, top: 6, bottom: 18),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: () => Navigator.pop(context),
+            icon: Icon(PhosphorIcons.arrowLeft(), color: Colors.white, size: 26),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: context.appTextTheme.titleLarge?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (subtitle != null)
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: context.appTextTheme.bodySmall?.copyWith(
+                      color: Colors.white70,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: () => _showSourceSheet(context),
+            tooltip: 'Switch source',
+            icon: Icon(
+              PhosphorIcons.arrowsClockwise(),
+              color: Colors.white,
+              size: 24,
+            ),
+          ),
+        ],
       ),
     );
   }
