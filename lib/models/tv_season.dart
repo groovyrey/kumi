@@ -47,8 +47,7 @@ class TvSeason {
       name: json['name'] as String? ?? 'Season',
       episodes: [
         for (final e in rawEpisodes)
-          if (e is Map)
-            TvEpisode.fromJson((e as Map).cast<String, dynamic>()),
+          if (e is Map) TvEpisode.fromJson(e.cast<String, dynamic>()),
       ],
     );
   }

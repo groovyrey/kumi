@@ -501,7 +501,7 @@ class _DetailScreenState extends State<DetailScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Airs $_airDate',
+                  'Airs $airDate',
                   style: context.appTextTheme.bodySmall?.copyWith(
                     color: context.appOnSurfaceVariant,
                   ),

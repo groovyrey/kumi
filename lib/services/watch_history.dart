@@ -115,7 +115,7 @@ class WatchHistory extends ChangeNotifier {
         episode: episode,
         // Re-starting the exact same title/episode keeps its saved position
         // so playback resumes; a different episode starts from zero.
-        positionSeconds: sameSpot ? previous!.positionSeconds : null,
+        positionSeconds: sameSpot ? previous.positionSeconds : null,
       ),
     );
     if (_entries.length > _limit) {

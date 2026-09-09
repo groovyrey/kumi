@@ -135,8 +135,7 @@ class TmdbService {
     final raw = data['episodes'] as List? ?? const [];
     return [
       for (final e in raw)
-        if (e is Map)
-          TvEpisode.fromJson((e as Map).cast<String, dynamic>()),
+        if (e is Map) TvEpisode.fromJson(e.cast<String, dynamic>()),
     ];
   }
 
