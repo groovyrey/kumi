@@ -19,7 +19,7 @@ class AboutScreen extends StatelessWidget {
   static const _purposeBody = 'Kumi is a no-strings streaming app built for '
       'movie nights: browse the latest films and shows, dive into a title, and '
       'start watching in seconds. No accounts, no ads, no noise.';
-  static const _features = [
+  static final _features = [
     (
       PhosphorIcons.filmSlate(),
       'Everything in one place',
@@ -141,7 +141,7 @@ class AboutScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 14),
-                const Divider(height: 1, color: AppColors.cardBorder),
+                Divider(height: 1, color: AppColors.cardBorder),
                 const SizedBox(height: 16),
                 Text(
                   'Developed and maintained by Groovyrey',
