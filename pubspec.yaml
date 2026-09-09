@@ -1,7 +1,7 @@
 name: kumi
 description: "Kumi - a streaming app for movies and TV, powered by TMDb."
 publish_to: 'none'
-version: 1.5.0+13
+version: 1.5.0+14
 
 environment:
   sdk: ^3.8.1
