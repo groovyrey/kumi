@@ -37,6 +37,9 @@ class _DetailScreenState extends State<DetailScreen> {
   int _season = 1;
   int _episode = 1;
 
+  static const _episodePageStep = 5;
+  int _episodesShown = 5;
+
   MediaItem get item => widget.item;
 
   String get _mediaParam => item.mediaType == 'tv' ? 'tvplay' : 'movie';
@@ -401,30 +404,31 @@ class _DetailScreenState extends State<DetailScreen> {
               children: [
                 if (_nextEpisode != null)
                   _upcomingEpisode(context, _nextEpisode!),
-                if (seasons.length > 1) ...[
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
-                    child: Row(
-                      children: [
-                        for (final season in seasons) ...[
-                          _SeasonChip(
-                            label: season.name == 'Season ${season.number}'
-                                ? 'S${season.number}'
-                                : season.name,
-                            selected: season.number == _season,
-                            onTap: () => setState(() {
-                              _season = season.number;
-                              _episode = _firstEpisodeOf(season.number);
-                            }),
-                          ),
-                          const SizedBox(width: 8),
-                        ],
-                      ],
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                  child: AppDropdown<int>(
+                    value: _season,
+                    hint: 'Season',
+                    fieldLeading: Icon(
+                      PhosphorIcons.stack(),
+                      size: 18,
+                      color: context.appAccent,
                     ),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() {
+                        _season = value;
+                        _episode = _firstEpisodeOf(value);
+                        _episodesShown = _episodePageStep;
+                      });
+                    },
+                    options: [
+                      for (final season in seasons)
+                        AppDropdownOption<int>(season.number, season.name),
+                    ],
                   ),
-                  Divider(height: 1, color: AppColors.cardBorder),
-                ],
+                ),
+                Divider(height: 1, color: AppColors.cardBorder),
                 if (episodes.isEmpty)
                   Padding(
                     padding: const EdgeInsets.all(16),
@@ -434,7 +438,7 @@ class _DetailScreenState extends State<DetailScreen> {
                     ),
                   )
                 else
-                  for (final episode in episodes)
+                  for (final episode in episodes.take(_episodesShown))
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -444,10 +448,12 @@ class _DetailScreenState extends State<DetailScreen> {
                           onTap: () => _play(context,
                               season: _season, episode: episode.number),
                         ),
-                        if (episode != episodes.last)
+                        if (episode != episodes.take(_episodesShown).last)
                           Divider(height: 1, color: AppColors.cardBorder),
                       ],
                     ),
+                if (episodes.length > _episodesShown)
+                  _loadMoreEpisodes(context, episodes.length - _episodesShown),
               ],
             ),
           ),
@@ -519,6 +525,29 @@ class _DetailScreenState extends State<DetailScreen> {
       if (s.number == season) return s.episodes;
     }
     return const [];
+  }
+
+  Widget _loadMoreEpisodes(BuildContext context, int remaining) {
+    return InkWell(
+      onTap: () => setState(() => _episodesShown += _episodePageStep),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(PhosphorIcons.plus(), size: 16, color: context.appAccent),
+            const SizedBox(width: 6),
+            Text(
+              'Show more episodes ($remaining remaining)',
+              style: context.appTextTheme.bodyMedium?.copyWith(
+                color: context.appAccent,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _comingSoonCard(BuildContext context, String releaseDate) {
@@ -740,49 +769,6 @@ class _SourceButton extends StatelessWidget {
             Icon(PhosphorIcons.caretRight(),
                 size: 16, color: context.appAccent),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-/// A tappable season pill in the seasons & episodes card.
-class _SeasonChip extends StatelessWidget {
-  const _SeasonChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-          decoration: BoxDecoration(
-            color: selected
-                ? context.appAccent
-                : context.appAccentSoft.withValues(alpha: 0.35),
-            borderRadius: BorderRadius.circular(8),
-            border: selected
-                ? null
-                : Border.all(color: AppColors.cardBorder),
-          ),
-          child: Text(
-            label,
-            style: context.appTextTheme.labelSmall?.copyWith(
-              color: selected ? context.appOnAccent : context.appOnSurface,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
         ),
       ),
     );
