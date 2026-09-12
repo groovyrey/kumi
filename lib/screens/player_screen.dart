@@ -1163,7 +1163,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
             visualDensity: VisualDensity.compact,
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
-            icon: const Icon(PhosphorIcons.x(), size: 16, color: Colors.white70),
+            icon: Icon(PhosphorIcons.x(), size: 16, color: Colors.white70),
           ),
         ],
       ),
