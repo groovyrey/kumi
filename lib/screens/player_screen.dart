@@ -62,7 +62,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
   WebViewController? _web;
   String _nativeLabel = '';
   String _fallbackNotice = '';
-  final List<String> _failures = [];
   bool _nativeFailed = false;
   bool _controlsVisible = true;
   Timer? _hideTimer;
@@ -260,13 +259,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
         if (started) return;
       } catch (error) {
         if (!mounted) return;
-        _failures.add('${provider.label}: $error');
+        debugPrint('[player] source $provider failed: $error');
       }
     }
     if (!mounted) return;
     _fallbackToEmbed(
       notice:
-          'None of the direct sources could play (${_failures.join('; ')}) — using the embed source instead.',
+          'Direct playback wasn\'t possible for this title, so Kumi opened the embed player instead.',
     );
   }
 
@@ -283,7 +282,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
     );
     final errorSub = player.stream.error.listen((message) {
       if (!mounted || !identical(_player, player)) return;
-      _failures.add('$label: $message');
       debugPrint('[player] native error: $message');
       unawaited(_retryAfterRuntimeError());
     });
@@ -327,7 +325,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       _scheduleHide();
       return true;
     } catch (error) {
-      _failures.add('$label: $error');
+      debugPrint('[player] open failed: $error');
       unawaited(errorSub.cancel());
       unawaited(player.dispose());
       return false;
@@ -401,7 +399,6 @@ class _PlayerScreenState extends State<PlayerScreen> {
     final broken = _player;
     final brokenSub = _errorSub;
     setState(() {
-      _failures.clear();
       _nativeFailed = false;
       _fallbackNotice = '';
       _player = null;
@@ -1159,6 +1156,14 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 color: Colors.white,
               ),
             ),
+          ),
+          IconButton(
+            onPressed: () => setState(() => _nativeFailed = false),
+            tooltip: 'Dismiss',
+            visualDensity: VisualDensity.compact,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+            icon: const Icon(PhosphorIcons.x(), size: 16, color: Colors.white70),
           ),
         ],
       ),
