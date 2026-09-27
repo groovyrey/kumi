@@ -293,28 +293,27 @@ class SettingsScreen extends StatelessWidget {
             padding: const EdgeInsets.all(0),
             child: Column(
               children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: _rowText(
-                          context,
-                          title: 'Update channel',
-                          caption: 'Beta includes rolling pre-releases.',
-                        ),
-                      ),
-                      Segmented(
-                        labels: const ['Stable', 'Beta'],
-                        selectedIndex: state.updateChannel ==
-                                UpdateChannel.beta
-                            ? 1
-                            : 0,
-                        onChanged: (i) =>
-                            state.setUpdateChannel(UpdateChannel.values[i]),
-                      ),
+                _dropdownRow(
+                  context,
+                  title: 'Update channel',
+                  hint: 'Channel',
+                  trailing: AppDropdown<UpdateChannel>(
+                    value: state.updateChannel,
+                    hint: 'Channel',
+                    onChanged: (v) {
+                      if (v != null) state.setUpdateChannel(v);
+                    },
+                    options: const [
+                      AppDropdownOption(UpdateChannel.stable, 'Stable'),
+                      AppDropdownOption(UpdateChannel.beta, 'Beta'),
                     ],
+                    fieldLeading: Icon(
+                      PhosphorIcons.checkCircle(),
+                      size: 18,
+                      color: context.appOnSurfaceVariant,
+                    ),
                   ),
+                  caption: 'Beta includes rolling pre-releases.',
                 ),
                 _switchRow(
                   context,
