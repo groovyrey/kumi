@@ -63,15 +63,15 @@ jobs:
       - name: Run tests
         run: flutter test
 
-      - name: Build APK (release)
-        run: flutter build apk --release
+      - name: Build APK (release, arm64 only)
+        run: flutter build apk --release --target-platform android-arm64
 
       - name: Name APK with app title and version
         run: |
           VERSION=$(grep '^version:' pubspec.yaml | head -1 | awk '{print $2}')
           VERSION_CLEAN=${VERSION%+*}
           cp build/app/outputs/flutter-apk/app-release.apk \
-            "build/app/outputs/flutter-apk/Kumi-${VERSION_CLEAN}.apk"
+            "build/app/outputs/flutter-apk/Kumi-${VERSION_CLEAN}-arm64.apk"
 
       - name: Determine version
         id: version
@@ -93,13 +93,16 @@ jobs:
         with:
           name: "Kumi ${{ steps.version.outputs.version }}"
           tag_name: ${{ steps.version.outputs.tag }}
-          files: build/app/outputs/flutter-apk/Kumi-${{ steps.version.outputs.version_clean }}.apk
+          body: |
+            arm64 APK only (`--target-platform android-arm64`),
+            release-signed so it installs over any previous Kumi build.
+          files: build/app/outputs/flutter-apk/Kumi-${{ steps.version.outputs.version_clean }}-arm64.apk
           generate_release_notes: true
 
       - name: Prepare beta APK filename
         if: github.ref == 'refs/heads/main'
         run: |
-          cp build/app/outputs/flutter-apk/Kumi-${{ steps.version.outputs.version_clean }}.apk \
+          cp build/app/outputs/flutter-apk/Kumi-${{ steps.version.outputs.version_clean }}-arm64.apk \
              build/app/outputs/flutter-apk/Kumi-${{ steps.version.outputs.version_clean }}-beta.apk
 
       - name: Publish rolling beta pre-release
@@ -111,6 +114,8 @@ jobs:
           body: |
             Rolling test build from `main`. Release-signed with the real
             keystore, so it installs over any previous Kumi build.
+
+            arm64 APK only (`--target-platform android-arm64`).
 
             This is a pre-release for testing before the version is cut to a
             real release. The stable app never announces it — only install it
